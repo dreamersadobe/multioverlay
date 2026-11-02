@@ -50,18 +50,18 @@ function mainHarness() {
     isDestroyed() { return false; }
   }
   const electron = {
-    app: { getPath: () => '/mock', whenReady: () => ({ then() {} }), on() {}, requestSingleInstanceLock: () => true, setLoginItemSettings() {} },
+    app: { getPath: () => '/mock', getVersion: () => '2.5.0', whenReady: () => ({ then() {} }), on() {}, requestSingleInstanceLock: () => true, setLoginItemSettings() {} },
     BrowserWindow: Window,
     screen: { getPrimaryDisplay: () => ({ workArea: area }), getDisplayMatching: () => ({ workArea: area }) },
     ipcMain: { handle: (name, fn) => handlers.set(name, fn), on() {} },
-    globalShortcut: {},
+    globalShortcut: {}, Menu: { buildFromTemplate: items => items },
   };
   const context = {
-    require: name => name === 'electron' ? electron : name === 'fs' ? { existsSync: () => false, mkdirSync() {}, writeFileSync() {} } : name === './overlay-utils' ? require('../overlay-utils') : require(name),
+    require: name => name === 'electron' ? electron : name === 'fs' ? { existsSync: () => false, mkdirSync() {}, writeFileSync() {} } : name.startsWith('./') ? require(path.join(__dirname, '..', name)) : require(name),
     __dirname: path.resolve(__dirname, '..'), console, Buffer,
     setTimeout: () => 0, clearTimeout() {}, process,
   };
-  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../main.js'), 'utf8') + '\ncreateOverlayWindow(); globalThis.window = overlayWindow; globalThis.recover = recoverWindowBounds; globalThis.deactivate = deactivateOverlay;', context);
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../main.js'), 'utf8') + '\ncreateOverlayWindow(); globalThis.window = overlayWindow; globalThis.recover = recoverWindowBounds; globalThis.deactivate = deactivateOverlay; tray = { setContextMenu: value => { globalThis.menu = value; } };', context);
   return { handlers, events, context, area, get opacity() { return opacity; }, get bounds() { return bounds; } };
 }
 
@@ -91,4 +91,37 @@ test('window presets, manual sizing and disconnected display recovery persist fi
   assert(h.bounds.x + h.bounds.width <= h.area.x + h.area.width);
   assert(h.bounds.y + h.bounds.height <= h.area.y + h.area.height);
   assert.equal(h.events.at(-1)[0], 'settings-updated');
+});
+
+
+test('English covers every Russian interface label and preserves template values', () => {
+  const { t } = require('../i18n');
+  const html = fs.readFileSync(path.join(__dirname, '../overlay.html'), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+  const strings = [
+    ...[...html.matchAll(/>([^<>]+)</g)].map(match => match[1].trim()),
+    ...[...html.matchAll(/(?:title|placeholder|aria-label)="([^"]+)"/g)].map(match => match[1]),
+  ];
+  for (const source of strings) {
+    if (!/[А-Яа-яЁё]/.test(source) || source === 'RU · Русский') continue;
+    assert(!/[А-Яа-яЁё]/.test(t(source, 'en')), `Missing translation: ${source}`);
+    assert.equal(t(source, 'ru'), source);
+  }
+  assert.equal(t('Мышь активна [Ctrl+F2]', 'en'), 'Mouse active [Ctrl+F2]');
+  assert.equal(t('Текущая версия: v2.5.0', 'en'), 'Current version: v2.5.0');
+  assert.equal(t('Ошибка: Ошибка подключения к GitHub', 'en'), 'Error: Could not connect to GitHub');
+  assert.equal(t('Изменить Мой гайд', 'en'), 'Edit Мой гайд');
+});
+
+test('language preference persists and updates native tray labels immediately', () => {
+  const h = mainHarness();
+  const event = { sender: h.context.window.webContents };
+  const save = h.handlers.get('save-settings');
+  save(event, { language: 'en' });
+  assert.equal(h.handlers.get('get-settings')().language, 'en');
+  assert(h.context.menu.some(item => item.label === '⚙️ Settings...'));
+  assert(!h.context.menu.some(item => /[А-Яа-яЁё]/.test(item.label || '')));
+  save(event, { language: 'ru' });
+  assert(h.context.menu.some(item => item.label === '⚙️ Настройки...'));
+  save(event, { language: 'unknown' });
+  assert.equal(h.handlers.get('get-settings')().language, 'ru');
 });

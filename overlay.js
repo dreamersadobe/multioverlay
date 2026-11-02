@@ -1,3 +1,6 @@
+const { t, setText, getSource } = window.overlayI18n;
+window.overlayI18n.capture(document);
+
 // DOM Elements
 const statusBadge = document.getElementById('status-badge');
 const opacityBadge = document.getElementById('opacity-badge');
@@ -66,6 +69,7 @@ let currentSettings = {
   height: 720,
   showNotifications: true,
   autoLaunch: false,
+  language: 'ru',
   bookmarks: normalizeBookmarks(),
 };
 
@@ -76,7 +80,7 @@ let notificationTimeout = null;
 function showNotification(text, duration = 2200) {
   if (!currentSettings.showNotifications && !text.includes('Ошибка')) return;
 
-  notificationText.textContent = text;
+  setText(notificationText, text);
   notification.classList.remove('hidden');
   notification.classList.add('visible');
 
@@ -91,33 +95,35 @@ function showNotification(text, duration = 2200) {
 function updateStatusBadge(isActive, hotkey, hideMode) {
   const keyLabel = hotkey || currentSettings.hotkey || 'F2';
   if (isActive) {
-    statusBadge.textContent = `Мышь активна [${keyLabel}]`;
+    setText(statusBadge, `Мышь активна [${keyLabel}]`);
     statusBadge.className = 'badge active';
-    statusBadge.title = `Нажмите ${keyLabel} или Esc, чтобы вернуть управление в игру`;
+    statusBadge.title = t(`Нажмите ${keyLabel} или Esc, чтобы вернуть управление в игру`);
   } else {
-    statusBadge.textContent = `HUD [${keyLabel}]`;
+    setText(statusBadge, `HUD [${keyLabel}]`);
     statusBadge.className = 'badge hud';
-    statusBadge.title = `Нажмите ${keyLabel}, чтобы захватить мышь`;
+    statusBadge.title = t(`Нажмите ${keyLabel}, чтобы захватить мышь`);
   }
 }
 
 function updateOpacityUI(value) {
-  opacityBadge.textContent = `${value}%`;
-  opacitySliderVal.textContent = `${value}%`;
+  setText(opacityBadge, `${value}%`);
+  setText(opacitySliderVal, `${value}%`);
   opacitySlider.value = value;
   document.getElementById('quick-opacity-slider').value = value;
-  document.getElementById('quick-opacity-value').textContent = `${value}%`;
+  setText(document.getElementById('quick-opacity-value'), `${value}%`);
 }
 
 function populateSettingsUI(settings) {
   const previousUrl = currentSettings.url;
   currentSettings = { ...currentSettings, ...settings };
+  window.overlayI18n.setLanguage(currentSettings.language);
+  document.getElementById('language-select').value = currentSettings.language;
 
   // Hotkey
-  hotkeyBtnText.textContent = currentSettings.hotkey;
+  setText(hotkeyBtnText, currentSettings.hotkey);
 
   // Status Badge
-  updateStatusBadge(settings.isActive ?? true, currentSettings.hotkey, currentSettings.hideMode);
+  updateStatusBadge(currentSettings.isActive ?? true, currentSettings.hotkey, currentSettings.hideMode);
 
   // Hide Mode
   modeRadios.forEach((radio) => {
@@ -151,16 +157,16 @@ function startRecordingHotkey() {
   if (isRecordingHotkey) return;
   isRecordingHotkey = true;
   hotkeyRecordBtn.classList.add('recording');
-  hotkeyBtnText.textContent = 'Нажмите клавишу...';
-  hotkeyRecordHint.textContent = 'Нажмите любую клавишу или комбинацию (Esc для отмены)';
+  setText(hotkeyBtnText, 'Нажмите клавишу...');
+  setText(hotkeyRecordHint, 'Нажмите любую клавишу или комбинацию (Esc для отмены)');
 }
 
 function stopRecordingHotkey() {
   if (!isRecordingHotkey) return;
   isRecordingHotkey = false;
   hotkeyRecordBtn.classList.remove('recording');
-  hotkeyBtnText.textContent = currentSettings.hotkey;
-  hotkeyRecordHint.textContent = 'Нажмите на кнопку выше, чтобы изменить клавишу';
+  setText(hotkeyBtnText, currentSettings.hotkey);
+  setText(hotkeyRecordHint, 'Нажмите на кнопку выше, чтобы изменить клавишу');
 }
 
 function parseKeyEventToAccelerator(e) {
@@ -244,12 +250,12 @@ async function applyNewHotkey(accelerator) {
   const result = await window.overlayAPI.setHotkey(accelerator);
   if (result.success) {
     currentSettings.hotkey = result.hotkey;
-    hotkeyBtnText.textContent = result.hotkey;
+    setText(hotkeyBtnText, result.hotkey);
     updateStatusBadge(true, result.hotkey, currentSettings.hideMode);
     showNotification(`Клавиша триггера установлена: [${result.hotkey}]`);
   } else {
     showNotification(result.error || 'Ошибка при установке клавиши', 3500);
-    hotkeyBtnText.textContent = currentSettings.hotkey;
+    setText(hotkeyBtnText, currentSettings.hotkey);
   }
   stopRecordingHotkey();
 }
@@ -411,7 +417,7 @@ btnSaveUrl.addEventListener('click', async () => {
     await navigateTo(inputUrl.value);
     closeSettingsModal();
   } catch (error) {
-    document.getElementById('bookmark-error').textContent = error.message || 'Проверьте адрес сайта';
+    setText(document.getElementById('bookmark-error'), error.message || 'Проверьте адрес сайта');
   }
 });
 
@@ -448,12 +454,12 @@ function renderUpdateInfo(info) {
   currentUpdateInfo = info;
 
   if (info.currentVersion && appVersionLabel) {
-    appVersionLabel.textContent = `Текущая версия: v${info.currentVersion}`;
+    setText(appVersionLabel, `Текущая версия: v${info.currentVersion}`);
   }
 
   if (!info.success && info.error) {
     if (updateStatusText) {
-      updateStatusText.textContent = `${info.error}`;
+      setText(updateStatusText, `${info.error}`);
       updateStatusText.className = 'update-status-text error';
     }
     if (btnStartDownload) btnStartDownload.classList.add('hidden');
@@ -467,19 +473,19 @@ function renderUpdateInfo(info) {
 
   if (info.hasUpdate) {
     if (updateStatusText) {
-      updateStatusText.textContent = `Доступна новая версия: ${info.latestVersion}`;
+      setText(updateStatusText, `Доступна новая версия: ${info.latestVersion}`);
       updateStatusText.className = 'update-status-text has-update';
     }
 
     if (btnUpdateBadge) {
       btnUpdateBadge.classList.remove('hidden');
-      btnUpdateBadge.textContent = `Доступно ${info.latestVersion}`;
+      setText(btnUpdateBadge, `Доступно ${info.latestVersion}`);
     }
 
     if (btnStartDownload) {
       btnStartDownload.classList.remove('hidden');
       btnStartDownload.disabled = false;
-      btnStartDownload.textContent = `Скачать установщик ${info.latestVersion}`;
+      setText(btnStartDownload, `Скачать установщик ${info.latestVersion}`);
     }
 
     if (btnOpenRelease) {
@@ -497,7 +503,7 @@ function renderUpdateInfo(info) {
     showNotification(`Доступно обновление ${info.latestVersion}! Откройте настройки для скачивания`, 4000);
   } else {
     if (updateStatusText) {
-      updateStatusText.textContent = `У вас установлена актуальная версия (v${info.currentVersion || ''})`;
+      setText(updateStatusText, `У вас установлена актуальная версия (v${info.currentVersion || ''})`);
       updateStatusText.className = 'update-status-text';
     }
     if (btnStartDownload) btnStartDownload.classList.add('hidden');
@@ -513,10 +519,10 @@ function renderUpdateInfo(info) {
 if (btnCheckUpdates) {
   btnCheckUpdates.addEventListener('click', async () => {
     btnCheckUpdates.disabled = true;
-    const oldText = btnCheckUpdates.textContent;
-    btnCheckUpdates.textContent = 'Проверка...';
+    const oldText = getSource(btnCheckUpdates);
+    setText(btnCheckUpdates, 'Проверка...');
     if (updateStatusText) {
-      updateStatusText.textContent = 'Проверяем релизы на GitHub...';
+      setText(updateStatusText, 'Проверяем релизы на GitHub...');
       updateStatusText.className = 'update-status-text';
     }
 
@@ -528,12 +534,12 @@ if (btnCheckUpdates) {
       }
     } catch (err) {
       if (updateStatusText) {
-        updateStatusText.textContent = `Ошибка: ${err.message}`;
+        setText(updateStatusText, `Ошибка: ${err.message}`);
         updateStatusText.className = 'update-status-text error';
       }
     } finally {
       btnCheckUpdates.disabled = false;
-      btnCheckUpdates.textContent = oldText;
+      setText(btnCheckUpdates, oldText);
     }
   });
 }
@@ -551,11 +557,11 @@ if (btnStartDownload) {
     if (btnCancelDownload) btnCancelDownload.classList.remove('hidden');
     if (updateProgressContainer) updateProgressContainer.classList.remove('hidden');
 
-    updateProgressPercent.textContent = '0%';
+    setText(updateProgressPercent, '0%');
     updateProgressFill.style.width = '0%';
-    updateProgressDetails.textContent = 'Подключение к GitHub...';
-    updateProgressSpeed.textContent = '';
-    updateStatusText.textContent = 'Загрузка обновления...';
+    setText(updateProgressDetails, 'Подключение к GitHub...');
+    setText(updateProgressSpeed, '');
+    setText(updateStatusText, 'Загрузка обновления...');
     updateStatusText.className = 'update-status-text';
 
     try {
@@ -564,7 +570,7 @@ if (btnStartDownload) {
         throw new Error(res.error || 'Ошибка скачивания файла');
       }
     } catch (err) {
-      updateStatusText.textContent = `${err.message}`;
+      setText(updateStatusText, `${err.message}`);
       updateStatusText.className = 'update-status-text error';
       btnStartDownload.classList.remove('hidden');
       if (btnCancelDownload) btnCancelDownload.classList.add('hidden');
@@ -581,7 +587,7 @@ if (btnCancelDownload) {
     if (updateProgressContainer) updateProgressContainer.classList.add('hidden');
     if (btnCancelDownload) btnCancelDownload.classList.add('hidden');
     if (btnStartDownload) btnStartDownload.classList.remove('hidden');
-    updateStatusText.textContent = 'Загрузка отменена.';
+    setText(updateStatusText, 'Загрузка отменена.');
     showNotification('Загрузка обновления отменена');
   });
 }
@@ -605,14 +611,14 @@ if (btnShowInFolder) {
 window.overlayAPI.onDownloadProgress((data) => {
   if (data.status === 'downloading') {
     if (updateProgressContainer) updateProgressContainer.classList.remove('hidden');
-    updateProgressPercent.textContent = `${data.percent}%`;
+    setText(updateProgressPercent, `${data.percent}%`);
     updateProgressFill.style.width = `${data.percent}%`;
-    updateProgressDetails.textContent = `${data.transferredMB} МБ / ${data.totalMB} МБ`;
-    updateProgressSpeed.textContent = data.speed;
+    setText(updateProgressDetails, `${data.transferredMB} МБ / ${data.totalMB} МБ`);
+    setText(updateProgressSpeed, data.speed);
   } else if (data.status === 'completed') {
-    updateProgressPercent.textContent = '100%';
+    setText(updateProgressPercent, '100%');
     updateProgressFill.style.width = '100%';
-    updateStatusText.textContent = 'Обновление скачано и готово к установке';
+    setText(updateStatusText, 'Обновление скачано и готово к установке');
     updateStatusText.className = 'update-status-text has-update';
 
     if (btnCancelDownload) btnCancelDownload.classList.add('hidden');
@@ -640,6 +646,7 @@ if (btnUpdateBadge) {
 
 // ============ IPC Subscriptions ============
 window.overlayAPI.onOverlayStateChanged(({ isActive, hideMode, hotkey }) => {
+  currentSettings.isActive = isActive;
   if (hotkey) currentSettings.hotkey = hotkey;
   if (hideMode) currentSettings.hideMode = hideMode;
 
@@ -704,7 +711,7 @@ document.querySelectorAll('[data-tab]').forEach((tab, index, tabs) => {
 });
 settingsModal.addEventListener('keydown', event => {
   if (event.key !== 'Tab') return;
-  const controls = [...settingsModal.querySelectorAll('button, input, [tabindex="0"]')]
+  const controls = [...settingsModal.querySelectorAll('button, input, select, [tabindex="0"]')]
     .filter(element => !element.disabled && element.tabIndex >= 0 && element.getClientRects().length);
   const first = controls[0], last = controls[controls.length - 1];
   if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
@@ -743,7 +750,7 @@ document.querySelectorAll('[data-window-preset]').forEach(button => {
     if (!bounds) return;
     inputWidth.value = bounds.width;
     inputHeight.value = bounds.height;
-    showNotification(`Положение: ${button.textContent.trim()}`);
+    showNotification(`Положение: ${t({left: 'Слева', right: 'Справа', center: 'По центру', compact: 'Компактное'}[button.dataset.windowPreset])}`);
   });
 });
 
@@ -755,9 +762,9 @@ const bookmarkError = document.getElementById('bookmark-error');
 function resetBookmarkEditor() {
   editingBookmark = null;
   document.getElementById('bookmark-form').reset();
-  document.getElementById('btn-save-bookmark').textContent = 'Добавить';
+  setText(document.getElementById('btn-save-bookmark'), 'Добавить');
   document.getElementById('btn-cancel-bookmark').classList.add('hidden');
-  bookmarkError.textContent = '';
+  setText(bookmarkError, '');
 }
 async function navigateTo(value) {
   const url = normalizeUrl(value);
@@ -784,7 +791,10 @@ function renderBookmarks() {
   bookmarks.forEach((bookmark, index) => {
     const shortcut = document.createElement('button');
     shortcut.className = 'bookmark-shortcut dock-item';
-    shortcut.textContent = bookmark.name;
+    shortcut.setAttribute('aria-label', bookmark.name);
+    const number = document.createElement('span'); number.className = 'bookmark-number'; number.textContent = String(index + 1).padStart(2, '0'); number.setAttribute('aria-hidden', 'true');
+    const label = document.createElement('span'); label.className = 'bookmark-label'; label.textContent = bookmark.name;
+    shortcut.append(number, label);
     shortcut.title = bookmark.url;
     shortcut.setAttribute('aria-current', bookmark.url === activeUrl ? 'page' : 'false');
     shortcut.addEventListener('click', () => navigateTo(bookmark.url).catch(error => showNotification(error.message)));
@@ -796,30 +806,30 @@ function renderBookmarks() {
     const address = document.createElement('span'); address.textContent = bookmark.url;
     info.append(name, address);
     const edit = document.createElement('button');
-    edit.className = 'toolbar-button'; edit.textContent = 'Изменить';
-    edit.setAttribute('aria-label', `Изменить ${bookmark.name}`);
+    edit.className = 'toolbar-button'; setText(edit, 'Изменить');
+    edit.setAttribute('aria-label', t(`Изменить ${bookmark.name}`));
     edit.addEventListener('click', () => {
       editingBookmark = index;
       bookmarkName.value = bookmark.name; bookmarkUrl.value = bookmark.url;
-      document.getElementById('btn-save-bookmark').textContent = 'Сохранить';
+      setText(document.getElementById('btn-save-bookmark'), 'Сохранить');
       document.getElementById('btn-cancel-bookmark').classList.remove('hidden');
       bookmarkName.focus();
     });
     const remove = document.createElement('button');
-    remove.className = 'toolbar-button'; remove.textContent = '×';
-    remove.setAttribute('aria-label', `Удалить ${bookmark.name}`);
+    remove.className = 'toolbar-button'; setText(remove, '×');
+    remove.setAttribute('aria-label', t(`Удалить ${bookmark.name}`));
     remove.addEventListener('click', async () => {
       try {
         await saveBookmarks(bookmarks.filter((_, i) => i !== index));
         resetBookmarkEditor();
         document.getElementById('btn-bookmark-current').focus();
-      } catch { bookmarkError.textContent = 'Не удалось сохранить закладки'; }
+      } catch { setText(bookmarkError, 'Не удалось сохранить закладки'); }
     });
     row.append(info, edit, remove); list.append(row);
   });
   if (!bookmarks.length) {
     const empty = document.createElement('span');
-    empty.className = 'setting-desc'; empty.textContent = 'Добавьте любимые сайты через ＋'; shortcuts.append(empty);
+    empty.className = 'setting-desc'; setText(empty, 'Добавьте любимые сайты через ＋'); shortcuts.append(empty);
   }
 }
 document.getElementById('bookmark-form').addEventListener('submit', async event => {
@@ -835,7 +845,7 @@ document.getElementById('bookmark-form').addEventListener('submit', async event 
     await saveBookmarks(bookmarks);
     resetBookmarkEditor();
     bookmarkName.focus();
-  } catch (error) { bookmarkError.textContent = error.message || 'Не удалось сохранить закладку'; }
+  } catch (error) { setText(bookmarkError, error.message || 'Не удалось сохранить закладку'); }
 });
 document.getElementById('btn-cancel-bookmark').addEventListener('click', resetBookmarkEditor);
 document.getElementById('btn-bookmark-current').addEventListener('click', () => {
@@ -849,6 +859,18 @@ document.getElementById('btn-manage-bookmarks').addEventListener('click', () => 
   document.getElementById('btn-bookmark-current').click();
 });
 
+document.getElementById('language-select').addEventListener('change', async event => {
+  const language = event.target.value;
+  try {
+    await window.overlayAPI.saveSettings({ language });
+    stopRecordingHotkey();
+    populateSettingsUI({ language });
+  } catch (error) {
+    event.target.value = currentSettings.language;
+    showNotification(error.message);
+  }
+});
+
 // ============ Initialization ============
 async function init() {
   const [settings, appVersion] = await Promise.all([
@@ -858,7 +880,7 @@ async function init() {
   populateSettingsUI(settings);
 
   if (appVersionLabel && appVersion) {
-    appVersionLabel.textContent = `Текущая версия: v${appVersion}`;
+    setText(appVersionLabel, `Текущая версия: v${appVersion}`);
   }
 
   setTimeout(() => {
@@ -894,10 +916,15 @@ dockGroups.forEach((group) => {
     });
   });
   group.addEventListener('pointerleave', resetDock);
+  group.addEventListener('pointerout', event => {
+    if (!group.contains(event.relatedTarget)) resetDock();
+  });
   group.addEventListener('pointercancel', resetDock);
 });
 motionPreference.addEventListener('change', resetDock);
 hoverCapability.addEventListener('change', resetDock);
 window.addEventListener('blur', resetDock);
+siteFrame.addEventListener('pointerenter', resetDock);
+siteFrame.addEventListener('focus', resetDock);
 document.addEventListener('visibilitychange', resetDock);
 window.overlayAPI.onOverlayStateChanged(resetDock);

@@ -1,6 +1,7 @@
 const { app, BrowserWindow, globalShortcut, Tray, Menu, screen, ipcMain, nativeImage, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { t } = require('./i18n');
 const { normalizeBookmarks, fitBounds, presetBounds } = require('./overlay-utils');
 let settingsOpen = false;
 
@@ -22,6 +23,7 @@ const DEFAULT_CONFIG = {
   y: null,
   showNotifications: true,
   autoLaunch: false,
+  language: 'ru',
 };
 
 function getUserConfigPath() {
@@ -47,7 +49,7 @@ function loadConfig() {
     }
   }
 
-  return { ...DEFAULT_CONFIG, ...loaded, bookmarks: normalizeBookmarks(loaded.bookmarks) };
+  return { ...DEFAULT_CONFIG, ...loaded, bookmarks: normalizeBookmarks(loaded.bookmarks), language: loaded.language === 'en' ? 'en' : 'ru' };
 }
 
 let config = loadConfig();
@@ -394,8 +396,8 @@ function updateTrayMenu() {
   if (!tray) return;
 
   const triggerLabel = isActive
-    ? `👁️ Скрыть оверлей (${config.hotkey})`
-    : `👁️ Открыть оверлей (${config.hotkey})`;
+    ? t(`👁️ Скрыть оверлей (${config.hotkey})`, config.language)
+    : t(`👁️ Открыть оверлей (${config.hotkey})`, config.language);
 
   const menuTemplate = [
     {
@@ -407,7 +409,7 @@ function updateTrayMenu() {
 
   if (cachedUpdateInfo && cachedUpdateInfo.hasUpdate) {
     menuTemplate.push({
-      label: `🎉 Новая версия ${cachedUpdateInfo.latestVersion}! (Скачать)`,
+      label: t(`🎉 Новая версия ${cachedUpdateInfo.latestVersion}! (Скачать)`, config.language),
       click: () => {
         shell.openExternal(cachedUpdateInfo.downloadUrl || cachedUpdateInfo.releaseUrl);
       },
@@ -422,7 +424,7 @@ function updateTrayMenu() {
       accelerator: config.hotkey,
     },
     {
-      label: '⚙️ Настройки...',
+      label: t('⚙️ Настройки...', config.language),
       click: () => {
         activateOverlay();
         if (overlayWindow) {
@@ -431,7 +433,7 @@ function updateTrayMenu() {
       },
     },
     {
-      label: '🔄 Перезагрузить страницу',
+      label: t('🔄 Перезагрузить страницу', config.language),
       click: () => {
         if (overlayWindow) {
           overlayWindow.webContents.send('reload-webview');
@@ -439,7 +441,7 @@ function updateTrayMenu() {
       },
     },
     {
-      label: '🔍 Проверить обновления',
+      label: t('🔍 Проверить обновления', config.language),
       click: async () => {
         const info = await checkForUpdates();
         updateTrayMenu();
@@ -451,12 +453,12 @@ function updateTrayMenu() {
       },
     },
     {
-      label: '📍 Сбросить размер и положение',
+      label: t('📍 Сбросить размер и положение', config.language),
       click: resetPosition,
     },
     { type: 'separator' },
     {
-      label: '❌ Выход',
+      label: t('❌ Выход', config.language),
       click: () => {
         if (overlayWindow) {
           overlayWindow.removeAllListeners('close');
@@ -480,6 +482,7 @@ ipcMain.handle('get-settings', () => {
 
 ipcMain.handle('save-settings', (event, updates) => {
   updates = { ...updates };
+  if (updates.language !== undefined) updates.language = updates.language === 'en' ? 'en' : 'ru';
   if (updates.bookmarks !== undefined) updates.bookmarks = normalizeBookmarks(updates.bookmarks);
   if (updates.opacity !== undefined) updates.opacity = Math.max(20, Math.min(100, Number(updates.opacity) || 85));
   saveConfig(updates);

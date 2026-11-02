@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="overlay.css">
+  <link rel="stylesheet" href="command-deck.css">
 </head>
 <body>
   <!-- Title bar for dragging and controls -->
@@ -21,7 +22,7 @@
             <path d="M6 12h4m-2-2v4m9-2h.01m3 0h.01"/>
           </svg>
         </span>
-        <span id="title-text">Game Overlay</span>
+        <span id="title-text">GAME<span class="brand-divider">/</span>OVERLAY</span>
       </div>
       <span id="status-badge" class="badge active" title="Текущий статус оверлея">Мышь активна [F2]</span>
 
@@ -62,6 +63,7 @@
   </header>
 
   <nav id="bookmarks-bar" aria-label="Любимые сайты">
+    <span class="rail-label" aria-hidden="true">БЫСТРЫЙ<br>ДОСТУП</span>
     <div id="bookmark-shortcuts" class="presets-buttons"></div>
     <button id="btn-manage-bookmarks" class="toolbar-button" title="Добавить или изменить закладки" aria-label="Управление закладками">＋</button>
   </nav>
@@ -90,8 +92,9 @@
           <span class="modal-title-icon">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           </span>
-          <span>Настройки оверлея</span>
+          <span class="settings-identity"><span class="eyebrow">GAME OVERLAY / НАСТРОЙКИ</span><strong>Ваше пространство.</strong><span class="identity-caption">Всё нужное. Поверх игры.</span></span>
         </div>
+        <div class="orbit-mark" aria-hidden="true"><i></i><b>GO</b></div>
         <button id="btn-modal-close" class="modal-close-btn" title="Закрыть">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"/>
@@ -101,13 +104,14 @@
       </div>
 
       <div class="settings-tabs" role="tablist" aria-label="Разделы настроек">
-        <button id="tab-general" role="tab" aria-selected="true" aria-controls="panel-general" data-tab="general">Основное</button>
-        <button id="tab-appearance" role="tab" aria-selected="false" aria-controls="panel-appearance" data-tab="appearance" tabindex="-1">Внешний вид</button>
-        <button id="tab-hotkeys" role="tab" aria-selected="false" aria-controls="panel-hotkeys" data-tab="hotkeys" tabindex="-1">Клавиши</button>
-        <button id="tab-updates" role="tab" aria-selected="false" aria-controls="panel-updates" data-tab="updates" tabindex="-1">Обновления</button>
+        <button id="tab-general" role="tab" aria-selected="true" aria-controls="panel-general" data-tab="general" data-number="01">Основное</button>
+        <button id="tab-appearance" role="tab" aria-selected="false" aria-controls="panel-appearance" data-tab="appearance" data-number="02" tabindex="-1">Внешний вид</button>
+        <button id="tab-hotkeys" role="tab" aria-selected="false" aria-controls="panel-hotkeys" data-tab="hotkeys" data-number="03" tabindex="-1">Клавиши</button>
+        <button id="tab-updates" role="tab" aria-selected="false" aria-controls="panel-updates" data-tab="updates" data-number="04" tabindex="-1">Обновления</button>
       </div>
       <div class="modal-body">
         <div id="panel-general" class="settings-panel" role="tabpanel" aria-labelledby="tab-general" tabindex="0">
+          <div class="panel-intro"><span class="eyebrow">01 / БЫСТРЫЙ ДОСТУП</span><h2>Всё под рукой</h2><p>Соберите свою коллекцию сайтов и выберите поведение оверлея.</p></div>
 <section data-settings-page="general" class="setting-group highlight-box">
           <div class="setting-header">
             <span class="setting-title">
@@ -192,6 +196,7 @@
         </section>
         </div>
         <div id="panel-appearance" class="settings-panel hidden" role="tabpanel" aria-labelledby="tab-appearance" tabindex="0">
+          <div class="panel-intro"><span class="eyebrow">02 / КОМПОНОВКА</span><h2>Свой угол обзора</h2><p>Расположите окно так, чтобы оно дополняло игру.</p></div>
 <section data-settings-page="appearance" class="setting-group">
           <div class="setting-header-inline">
             <span class="setting-title">
@@ -216,10 +221,10 @@
             <span class="setting-desc">Размер и позиция также сохраняются автоматически при перемещении за шапку.</span>
           </div>
           <div class="window-presets" aria-label="Положение окна">
-            <button class="btn secondary" data-window-preset="left">◧ Слева</button>
-            <button class="btn secondary" data-window-preset="right">◨ Справа</button>
-            <button class="btn secondary" data-window-preset="center">По центру</button>
-            <button class="btn secondary" data-window-preset="compact">Компактное</button>
+            <button class="btn secondary" data-window-preset="left"><span class="layout-diagram layout-left" aria-hidden="true"><i></i></span><span>Слева</span></button>
+            <button class="btn secondary" data-window-preset="right"><span class="layout-diagram layout-right" aria-hidden="true"><i></i></span><span>Справа</span></button>
+            <button class="btn secondary" data-window-preset="center"><span class="layout-diagram layout-center" aria-hidden="true"><i></i></span><span>По центру</span></button>
+            <button class="btn secondary" data-window-preset="compact"><span class="layout-diagram layout-compact" aria-hidden="true"><i></i></span><span>Компактное</span></button>
           </div>
           <div class="size-controls">
             <div class="input-field">
@@ -238,6 +243,7 @@
         </section>
         </div>
         <div id="panel-hotkeys" class="settings-panel hidden" role="tabpanel" aria-labelledby="tab-hotkeys" tabindex="0">
+          <div class="panel-intro"><span class="eyebrow">03 / УПРАВЛЕНИЕ</span><h2>Одно нажатие — и вы здесь</h2><p>Назначьте удобную клавишу для вызова оверлея.</p></div>
 <section data-settings-page="hotkeys" class="setting-group">
           <div class="setting-header">
             <span class="setting-title">
@@ -267,13 +273,14 @@
         </section>
         </div>
         <div id="panel-updates" class="settings-panel hidden" role="tabpanel" aria-labelledby="tab-updates" tabindex="0">
+          <div class="panel-intro"><span class="eyebrow">04 / ПРИЛОЖЕНИЕ</span><h2>Всегда в форме</h2><p>Проверяйте и устанавливайте новые версии прямо здесь.</p></div>
 <section data-settings-page="updates" class="setting-group" id="section-updates">
           <div class="setting-header">
             <span class="setting-title">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
               <span>Обновления программы</span>
             </span>
-            <span class="setting-desc" id="app-version-label">Текущая версия: v2.4.0</span>
+            <span class="setting-desc" id="app-version-label">Текущая версия: v2.5.0</span>
           </div>
           <div class="update-box">
             <div id="update-status-text" class="update-status-text">Проверка наличия обновлений...</div>
@@ -306,12 +313,14 @@
         </div>
       </div>
 
-      <div class="modal-footer"><span class="setting-desc">Изменения сохраняются автоматически</span>
+      <div class="modal-footer"><span class="save-indicator"><i></i><span>Автосохранение включено</span></span>
+        <label class="language-control"><span class="sr-only">Язык интерфейса</span><select id="language-select" aria-label="Язык интерфейса"><option value="ru">RU · Русский</option><option value="en">EN · English</option></select></label>
         <button id="btn-modal-done" class="btn primary">Готово</button>
       </div>
     </div>
   </div>
 
+  <script src="i18n.js"></script>
   <script src="overlay-utils.js"></script>
   <script src="overlay.js"></script>
 </body>

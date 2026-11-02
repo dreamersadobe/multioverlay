@@ -1,6 +1,6 @@
 {
   "name": "game-overlay",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "description": "Universal in-game overlay for displaying any website on top of your game",
   "main": "main.js",
   "scripts": {
@@ -46,6 +46,8 @@
       "overlay.css",
       "overlay.js",
       "overlay-utils.js",
+      "i18n.js",
+      "command-deck.css",
       "error.html",
       "config.json",
       "assets/**"
