@@ -1,10 +1,11 @@
 {
   "name": "game-overlay",
-  "version": "2.3.1",
+  "version": "2.4.0",
   "description": "Universal in-game overlay for displaying any website on top of your game",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
+    "test": "node --test",
     "build": "electron-builder --win nsis"
   },
   "author": "DBDFogOverlay",
@@ -44,6 +45,7 @@
       "overlay.html",
       "overlay.css",
       "overlay.js",
+      "overlay-utils.js",
       "error.html",
       "config.json",
       "assets/**"

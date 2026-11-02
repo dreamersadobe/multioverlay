@@ -24,11 +24,18 @@
         <span id="title-text">Game Overlay</span>
       </div>
       <span id="status-badge" class="badge active" title="Текущий статус оверлея">Мышь активна [F2]</span>
-      <span id="opacity-badge" class="badge opacity" title="Текущая непрозрачность">85%</span>
+
       <button id="btn-update-badge" class="badge-update hidden" title="Нажмите, чтобы открыть меню обновления">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v10m0 0l3-3m-3 3L9 9"/><path d="M2 17l.62 2.48A2 2 0 0 0 4.56 21h14.88a2 2 0 0 0 1.94-1.52L22 17"/></svg>
         <span>Новая версия!</span>
       </button>
+    </div>
+    <div id="quick-opacity">
+      <button id="opacity-badge" class="badge opacity" title="Непрозрачность оверлея" aria-expanded="false" aria-controls="opacity-popover">85%</button>
+      <div id="opacity-popover" class="quick-popover hidden">
+        <label for="quick-opacity-slider">Непрозрачность <output id="quick-opacity-value">85%</output></label>
+        <input id="quick-opacity-slider" class="custom-slider" type="range" min="20" max="100" step="5" value="85">
+      </div>
     </div>
     <div id="title-bar-controls">
       <button id="btn-settings" title="Настройки оверлея">
@@ -53,6 +60,11 @@
       </button>
     </div>
   </header>
+
+  <nav id="bookmarks-bar" aria-label="Любимые сайты">
+    <div id="bookmark-shortcuts" class="presets-buttons"></div>
+    <button id="btn-manage-bookmarks" class="toolbar-button" title="Добавить или изменить закладки" aria-label="Управление закладками">＋</button>
+  </nav>
 
   <!-- Notification popup for feedback -->
   <div id="notification" class="notification hidden" aria-live="polite">
@@ -88,9 +100,15 @@
         </button>
       </div>
 
+      <div class="settings-tabs" role="tablist" aria-label="Разделы настроек">
+        <button id="tab-general" role="tab" aria-selected="true" aria-controls="panel-general" data-tab="general">Основное</button>
+        <button id="tab-appearance" role="tab" aria-selected="false" aria-controls="panel-appearance" data-tab="appearance" tabindex="-1">Внешний вид</button>
+        <button id="tab-hotkeys" role="tab" aria-selected="false" aria-controls="panel-hotkeys" data-tab="hotkeys" tabindex="-1">Клавиши</button>
+        <button id="tab-updates" role="tab" aria-selected="false" aria-controls="panel-updates" data-tab="updates" tabindex="-1">Обновления</button>
+      </div>
       <div class="modal-body">
-        <!-- 1. URL Section -->
-        <section class="setting-group highlight-box">
+        <div id="panel-general" class="settings-panel" role="tabpanel" aria-labelledby="tab-general" tabindex="0">
+<section data-settings-page="general" class="setting-group highlight-box">
           <div class="setting-header">
             <span class="setting-title">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
@@ -105,49 +123,22 @@
               <span>Открыть</span>
             </button>
           </div>
-          <div class="url-presets">
-            <span class="presets-label">Быстрые закладки:</span>
-            <div class="presets-buttons">
-              <button type="button" class="preset-url" data-url="https://dbdfog.ru/survivor-builds">DBD Fog</button>
-              <button type="button" class="preset-url" data-url="https://wiki.deadbydaylight.com">DBD Wiki</button>
-              <button type="button" class="preset-url" data-url="https://youtube.com">YouTube</button>
-              <button type="button" class="preset-url" data-url="https://discord.com/app">Discord</button>
-              <button type="button" class="preset-url" data-url="https://twitch.tv">Twitch</button>
-            </div>
+          <div class="bookmark-editor">
+            <div class="setting-header"><span class="setting-title">Любимые сайты</span><span class="setting-desc">До 30 закладок. Переключение сайта перезагружает страницу.</span></div>
+            <form id="bookmark-form" class="bookmark-form">
+              <label class="sr-only" for="bookmark-name">Название закладки</label>
+              <input id="bookmark-name" maxlength="40" placeholder="Название" required>
+              <label class="sr-only" for="bookmark-url">Адрес закладки</label>
+              <input id="bookmark-url" placeholder="https://example.com" required>
+              <button class="btn secondary" id="btn-save-bookmark" type="submit">Добавить</button>
+              <button class="btn secondary hidden" id="btn-cancel-bookmark" type="button">Отмена</button>
+            </form>
+            <button class="btn secondary" id="btn-bookmark-current" type="button">Добавить открытый адрес</button>
+            <p id="bookmark-error" class="inline-error" role="alert"></p>
+            <div id="bookmark-list"></div>
           </div>
         </section>
-
-        <!-- 2. Hotkey Section -->
-        <section class="setting-group">
-          <div class="setting-header">
-            <span class="setting-title">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="6" y1="8" x2="6" y2="8"/><line x1="10" y1="8" x2="10" y2="8"/><line x1="14" y1="8" x2="14" y2="8"/><line x1="18" y1="8" x2="18" y2="8"/><line x1="6" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="18" y2="12"/><line x1="10" y1="16" x2="14" y2="16"/></svg>
-              <span>Клавиша вызова (Триггер)</span>
-            </span>
-            <span class="setting-desc">Нажмите эту клавишу в игре для открытия оверлея. Повторное нажатие вернет курсор в игру.</span>
-          </div>
-
-          <div class="hotkey-recorder-box">
-            <button id="hotkey-record-btn" class="hotkey-btn" title="Нажмите, чтобы назначить новую клавишу">
-              <span id="hotkey-btn-text">F2</span>
-            </button>
-            <div id="hotkey-record-hint" class="hotkey-hint">Нажмите на кнопку выше, чтобы изменить клавишу</div>
-          </div>
-
-          <div class="presets-row">
-            <span class="presets-label">Быстрый выбор:</span>
-            <div class="presets-buttons">
-              <button type="button" class="preset-key" data-key="F2"><kbd>F2</kbd></button>
-              <button type="button" class="preset-key" data-key="F3"><kbd>F3</kbd></button>
-              <button type="button" class="preset-key" data-key="F4"><kbd>F4</kbd></button>
-              <button type="button" class="preset-key" data-key="`"><kbd>~ (Ё)</kbd></button>
-              <button type="button" class="preset-key" data-key="Alt+F1"><kbd>Alt+F1</kbd></button>
-            </div>
-          </div>
-        </section>
-
-        <!-- 3. Mode Section -->
-        <section class="setting-group">
+<section data-settings-page="general" class="setting-group">
           <div class="setting-header">
             <span class="setting-title">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
@@ -179,51 +170,7 @@
             </label>
           </div>
         </section>
-
-        <!-- 4. Opacity Section -->
-        <section class="setting-group">
-          <div class="setting-header-inline">
-            <span class="setting-title">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-              <span>Непрозрачность оверлея</span>
-            </span>
-            <span id="opacity-slider-val" class="slider-badge">85%</span>
-          </div>
-          <input type="range" id="opacity-slider" min="20" max="100" step="5" value="85" class="custom-slider">
-          <div class="slider-ticks">
-            <span>20% (Прозрачно)</span>
-            <span>85% (Рекомендуется)</span>
-            <span>100% (Непрозрачно)</span>
-          </div>
-        </section>
-
-        <!-- 5. Window Size and Position -->
-        <section class="setting-group">
-          <div class="setting-header">
-            <span class="setting-title">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6m0-6L14 10M9 21H3v-6m0 6l7-7"/></svg>
-              <span>Размер и положение</span>
-            </span>
-            <span class="setting-desc">Размер и позиция также сохраняются автоматически при перемещении за шапку.</span>
-          </div>
-          <div class="size-controls">
-            <div class="input-field">
-              <label for="input-width">Ширина (px)</label>
-              <input type="number" id="input-width" min="320" max="2560" step="20" value="1280">
-            </div>
-            <div class="input-field">
-              <label for="input-height">Высота (px)</label>
-              <input type="number" id="input-height" min="320" max="1440" step="20" value="720">
-            </div>
-            <div class="size-buttons">
-              <button id="btn-apply-size" class="btn secondary">Применить</button>
-              <button id="btn-reset-pos" class="btn secondary" title="Сбросить в центр экрана (1280x720)">Сбросить</button>
-            </div>
-          </div>
-        </section>
-
-        <!-- 6. System & Notifications -->
-        <section class="setting-group">
+<section data-settings-page="general" class="setting-group">
           <div class="setting-header">
             <span class="setting-title">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
@@ -243,15 +190,90 @@
             </label>
           </div>
         </section>
+        </div>
+        <div id="panel-appearance" class="settings-panel hidden" role="tabpanel" aria-labelledby="tab-appearance" tabindex="0">
+<section data-settings-page="appearance" class="setting-group">
+          <div class="setting-header-inline">
+            <span class="setting-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+              <span>Непрозрачность оверлея</span>
+            </span>
+            <span id="opacity-slider-val" class="slider-badge">85%</span>
+          </div>
+          <input type="range" id="opacity-slider" min="20" max="100" step="5" value="85" class="custom-slider">
+          <div class="slider-ticks">
+            <span>20% (Прозрачно)</span>
+            <span>85% (Рекомендуется)</span>
+            <span>100% (Непрозрачно)</span>
+          </div>
+        </section>
+<section data-settings-page="appearance" class="setting-group">
+          <div class="setting-header">
+            <span class="setting-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6m0-6L14 10M9 21H3v-6m0 6l7-7"/></svg>
+              <span>Размер и положение</span>
+            </span>
+            <span class="setting-desc">Размер и позиция также сохраняются автоматически при перемещении за шапку.</span>
+          </div>
+          <div class="window-presets" aria-label="Положение окна">
+            <button class="btn secondary" data-window-preset="left">◧ Слева</button>
+            <button class="btn secondary" data-window-preset="right">◨ Справа</button>
+            <button class="btn secondary" data-window-preset="center">По центру</button>
+            <button class="btn secondary" data-window-preset="compact">Компактное</button>
+          </div>
+          <div class="size-controls">
+            <div class="input-field">
+              <label for="input-width">Ширина (px)</label>
+              <input type="number" id="input-width" min="320" max="2560" step="20" value="1280">
+            </div>
+            <div class="input-field">
+              <label for="input-height">Высота (px)</label>
+              <input type="number" id="input-height" min="320" max="1440" step="20" value="720">
+            </div>
+            <div class="size-buttons">
+              <button id="btn-apply-size" class="btn secondary">Применить</button>
+              <button id="btn-reset-pos" class="btn secondary" title="Сбросить размер и положение по центру текущего экрана">Сбросить</button>
+            </div>
+          </div>
+        </section>
+        </div>
+        <div id="panel-hotkeys" class="settings-panel hidden" role="tabpanel" aria-labelledby="tab-hotkeys" tabindex="0">
+<section data-settings-page="hotkeys" class="setting-group">
+          <div class="setting-header">
+            <span class="setting-title">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="6" y1="8" x2="6" y2="8"/><line x1="10" y1="8" x2="10" y2="8"/><line x1="14" y1="8" x2="14" y2="8"/><line x1="18" y1="8" x2="18" y2="8"/><line x1="6" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="18" y2="12"/><line x1="10" y1="16" x2="14" y2="16"/></svg>
+              <span>Клавиша вызова (Триггер)</span>
+            </span>
+            <span class="setting-desc">Нажмите эту клавишу в игре для открытия оверлея. Повторное нажатие вернет курсор в игру.</span>
+          </div>
 
-        <!-- 7. Updates Section -->
-        <section class="setting-group" id="section-updates">
+          <div class="hotkey-recorder-box">
+            <button id="hotkey-record-btn" class="hotkey-btn" title="Нажмите, чтобы назначить новую клавишу">
+              <span id="hotkey-btn-text">F2</span>
+            </button>
+            <div id="hotkey-record-hint" class="hotkey-hint">Нажмите на кнопку выше, чтобы изменить клавишу</div>
+          </div>
+
+          <div class="presets-row">
+            <span class="presets-label">Быстрый выбор:</span>
+            <div class="presets-buttons">
+              <button type="button" class="preset-key" data-key="F2"><kbd>F2</kbd></button>
+              <button type="button" class="preset-key" data-key="F3"><kbd>F3</kbd></button>
+              <button type="button" class="preset-key" data-key="F4"><kbd>F4</kbd></button>
+              <button type="button" class="preset-key" data-key="`"><kbd>~ (Ё)</kbd></button>
+              <button type="button" class="preset-key" data-key="Alt+F1"><kbd>Alt+F1</kbd></button>
+            </div>
+          </div>
+        </section>
+        </div>
+        <div id="panel-updates" class="settings-panel hidden" role="tabpanel" aria-labelledby="tab-updates" tabindex="0">
+<section data-settings-page="updates" class="setting-group" id="section-updates">
           <div class="setting-header">
             <span class="setting-title">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
               <span>Обновления программы</span>
             </span>
-            <span class="setting-desc" id="app-version-label">Текущая версия: v2.3.1</span>
+            <span class="setting-desc" id="app-version-label">Текущая версия: v2.4.0</span>
           </div>
           <div class="update-box">
             <div id="update-status-text" class="update-status-text">Проверка наличия обновлений...</div>
@@ -281,14 +303,16 @@
             </div>
           </div>
         </section>
+        </div>
       </div>
 
-      <div class="modal-footer">
+      <div class="modal-footer"><span class="setting-desc">Изменения сохраняются автоматически</span>
         <button id="btn-modal-done" class="btn primary">Готово</button>
       </div>
     </div>
   </div>
 
+  <script src="overlay-utils.js"></script>
   <script src="overlay.js"></script>
 </body>
 </html>

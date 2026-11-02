@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld('overlayAPI', {
   getSettings: () => ipcRenderer.invoke('get-settings'),
   saveSettings: (settings) => ipcRenderer.invoke('save-settings', settings),
   setHotkey: (hotkey) => ipcRenderer.invoke('set-hotkey', hotkey),
+  setSettingsOpen: (open) => ipcRenderer.invoke('set-settings-open', open),
+  applyWindowPreset: (preset) => ipcRenderer.invoke('apply-window-preset', preset),
   resetPosition: () => ipcRenderer.invoke('reset-position'),
   deactivate: () => ipcRenderer.send('deactivate-overlay'),
   reloadWebview: () => ipcRenderer.send('reload-webview'),

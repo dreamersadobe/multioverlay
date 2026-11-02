@@ -1,6 +1,8 @@
 const { app, BrowserWindow, globalShortcut, Tray, Menu, screen, ipcMain, nativeImage, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { normalizeBookmarks, fitBounds, presetBounds } = require('./overlay-utils');
+let settingsOpen = false;
 
 const GITHUB_REPO = 'dreamersadobe/multioverlay';
 
@@ -45,7 +47,7 @@ function loadConfig() {
     }
   }
 
-  return { ...DEFAULT_CONFIG, ...loaded };
+  return { ...DEFAULT_CONFIG, ...loaded, bookmarks: normalizeBookmarks(loaded.bookmarks) };
 }
 
 let config = loadConfig();
@@ -80,19 +82,16 @@ function setAutoLaunch(enable) {
 }
 
 function createOverlayWindow() {
-  const display = screen.getPrimaryDisplay();
-  const { width: screenWidth } = display.workAreaSize;
-
-  const initialWidth = config.width || DEFAULT_CONFIG.width;
-  const initialHeight = config.height || DEFAULT_CONFIG.height;
-  const initialX = typeof config.x === 'number' ? config.x : Math.round((screenWidth - initialWidth) / 2);
-  const initialY = typeof config.y === 'number' ? config.y : 20;
+  const savedBounds = { x: config.x, y: config.y, width: config.width, height: config.height };
+  const display = Number.isFinite(config.x) && Number.isFinite(config.y)
+    ? screen.getDisplayMatching({ x: config.x, y: config.y, width: config.width, height: config.height })
+    : screen.getPrimaryDisplay();
+  const initialBounds = fitBounds(savedBounds, display.workArea);
 
   overlayWindow = new BrowserWindow({
-    width: initialWidth,
-    height: initialHeight,
-    x: initialX,
-    y: initialY,
+    ...initialBounds,
+    minWidth: 320,
+    minHeight: 320,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
@@ -270,6 +269,8 @@ async function checkForUpdates() {
 }
 
 function deactivateOverlay() {
+  settingsOpen = false;
+  if (overlayWindow) overlayWindow.setOpacity(config.opacity / 100);
   if (!overlayWindow) return;
 
   isActive = false;
@@ -322,23 +323,28 @@ function registerTriggerShortcut(hotkey) {
   }
 }
 
+function applyWindowPreset(preset) {
+  if (!overlayWindow) return null;
+  const display = screen.getDisplayMatching(overlayWindow.getBounds());
+  const bounds = presetBounds(preset, display.workArea);
+  overlayWindow.setBounds(bounds);
+  saveConfig(bounds);
+  overlayWindow.webContents.send('settings-updated', { ...config, isActive });
+  return bounds;
+}
+
 function resetPosition() {
-  if (!overlayWindow) return;
+  return applyWindowPreset('center');
+}
 
-  const { width: screenWidth } = screen.getPrimaryDisplay().workAreaSize;
-  const width = DEFAULT_CONFIG.width;
-  const height = DEFAULT_CONFIG.height;
-  const x = Math.round((screenWidth - width) / 2);
-  const y = 20;
-
-  overlayWindow.setBounds({ x, y, width, height });
-  saveConfig({ x, y, width, height });
-
-  if (overlayWindow.webContents) {
-    overlayWindow.webContents.send('settings-updated', config);
-  }
-
-  return { x, y, width, height };
+function recoverWindowBounds() {
+  if (!overlayWindow || overlayWindow.isDestroyed()) return;
+  const bounds = overlayWindow.getBounds();
+  const display = screen.getDisplayMatching(bounds);
+  const fitted = fitBounds(bounds, display.workArea);
+  overlayWindow.setBounds(fitted);
+  saveConfig(fitted);
+  overlayWindow.webContents.send('settings-updated', { ...config, isActive });
 }
 
 function createTray() {
@@ -473,20 +479,20 @@ ipcMain.handle('get-settings', () => {
 });
 
 ipcMain.handle('save-settings', (event, updates) => {
+  updates = { ...updates };
+  if (updates.bookmarks !== undefined) updates.bookmarks = normalizeBookmarks(updates.bookmarks);
+  if (updates.opacity !== undefined) updates.opacity = Math.max(20, Math.min(100, Number(updates.opacity) || 85));
   saveConfig(updates);
 
   if (updates.opacity !== undefined && overlayWindow) {
-    overlayWindow.setOpacity(updates.opacity / 100);
+    overlayWindow.setOpacity(settingsOpen ? 1 : updates.opacity / 100);
   }
 
   if (updates.width !== undefined && updates.height !== undefined && overlayWindow) {
     const currentBounds = overlayWindow.getBounds();
-    overlayWindow.setBounds({
-      x: currentBounds.x,
-      y: currentBounds.y,
-      width: Number(updates.width),
-      height: Number(updates.height),
-    });
+    const bounds = fitBounds({ ...currentBounds, width: Number(updates.width), height: Number(updates.height) }, screen.getDisplayMatching(currentBounds).workArea);
+    overlayWindow.setBounds(bounds);
+    saveConfig(bounds);
   }
 
   if (updates.autoLaunch !== undefined) {
@@ -505,6 +511,17 @@ ipcMain.handle('save-settings', (event, updates) => {
 
   updateTrayMenu();
   return config;
+});
+
+ipcMain.handle('set-settings-open', (event, open) => {
+  if (event.sender !== overlayWindow?.webContents) return;
+  settingsOpen = !!open;
+  overlayWindow.setOpacity(settingsOpen ? 1 : config.opacity / 100);
+});
+
+ipcMain.handle('apply-window-preset', (event, preset) => {
+  if (event.sender !== overlayWindow?.webContents || !['left', 'right', 'center', 'compact'].includes(preset)) return null;
+  return applyWindowPreset(preset);
 });
 
 ipcMain.handle('set-hotkey', (event, newHotkey) => {
@@ -710,6 +727,8 @@ ipcMain.handle('show-downloaded-file', () => {
 // App Lifecycle
 app.whenReady().then(() => {
   createOverlayWindow();
+  screen.on('display-removed', recoverWindowBounds);
+  screen.on('display-metrics-changed', recoverWindowBounds);
   registerTriggerShortcut(config.hotkey);
   createTray();
   setAutoLaunch(config.autoLaunch);

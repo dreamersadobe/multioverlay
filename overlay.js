@@ -20,7 +20,7 @@ const hotkeyRecordBtn = document.getElementById('hotkey-record-btn');
 const hotkeyBtnText = document.getElementById('hotkey-btn-text');
 const hotkeyRecordHint = document.getElementById('hotkey-record-hint');
 const presetKeys = document.querySelectorAll('.preset-key');
-const presetUrls = document.querySelectorAll('.preset-url');
+const { normalizeUrl, normalizeBookmarks } = window.overlayUtils;
 
 const modeRadios = document.querySelectorAll('input[name="hideMode"]');
 const opacitySlider = document.getElementById('opacity-slider');
@@ -66,6 +66,7 @@ let currentSettings = {
   height: 720,
   showNotifications: true,
   autoLaunch: false,
+  bookmarks: normalizeBookmarks(),
 };
 
 let isRecordingHotkey = false;
@@ -104,9 +105,12 @@ function updateOpacityUI(value) {
   opacityBadge.textContent = `${value}%`;
   opacitySliderVal.textContent = `${value}%`;
   opacitySlider.value = value;
+  document.getElementById('quick-opacity-slider').value = value;
+  document.getElementById('quick-opacity-value').textContent = `${value}%`;
 }
 
 function populateSettingsUI(settings) {
+  const previousUrl = currentSettings.url;
   currentSettings = { ...currentSettings, ...settings };
 
   // Hotkey
@@ -130,10 +134,12 @@ function populateSettingsUI(settings) {
   // URL & iframe
   if (currentSettings.url) {
     inputUrl.value = currentSettings.url;
-    if (siteFrame.src === 'about:blank' || siteFrame.src !== currentSettings.url) {
+    if (siteFrame.src === 'about:blank' || previousUrl !== currentSettings.url) {
       siteFrame.src = currentSettings.url;
     }
   }
+
+  renderBookmarks();
 
   // Checkboxes
   chkAutoLaunch.checked = !!currentSettings.autoLaunch;
@@ -270,6 +276,13 @@ window.addEventListener('keydown', (e) => {
 
   // If not recording, Esc deactivates the overlay or closes settings modal
   if (e.key === 'Escape') {
+    if (!document.getElementById('opacity-popover').classList.contains('hidden')) {
+      e.preventDefault();
+      e.stopPropagation();
+      closeOpacityPopover();
+      opacityBadge.focus();
+      return;
+    }
     if (!settingsModal.classList.contains('hidden')) {
       closeSettingsModal();
     } else {
@@ -279,19 +292,34 @@ window.addEventListener('keydown', (e) => {
 }, true);
 
 // ============ Settings Modal Open/Close ============
-function openSettingsModal() {
+let settingsReturnFocus = null;
+function openSettingsModal(page) {
+  if (settingsModal.classList.contains('hidden')) settingsReturnFocus = document.activeElement;
   settingsModal.classList.remove('hidden');
+  document.getElementById('main-content').inert = true;
+  document.getElementById('title-bar').inert = true;
+  document.getElementById('bookmarks-bar').inert = true;
+  closeOpacityPopover();
+  if (typeof page === 'string') selectSettingsTab(page);
+  window.overlayAPI.setSettingsOpen(true);
+  document.querySelector('.settings-tabs [aria-selected="true"]').focus();
 }
 
 function closeSettingsModal() {
   stopRecordingHotkey();
   settingsModal.classList.add('hidden');
+  document.getElementById('main-content').inert = false;
+  document.getElementById('title-bar').inert = false;
+  document.getElementById('bookmarks-bar').inert = false;
+  window.overlayAPI.setSettingsOpen(false);
+  settingsReturnFocus?.focus();
 }
 
 btnSettings.addEventListener('click', () => {
   if (settingsModal.classList.contains('hidden')) {
     openSettingsModal();
   } else {
+    closeOpacityPopover();
     closeSettingsModal();
   }
 });
@@ -332,18 +360,6 @@ presetKeys.forEach((btn) => {
   });
 });
 
-// URL Presets
-presetUrls.forEach((btn) => {
-  btn.addEventListener('click', async () => {
-    const url = btn.getAttribute('data-url');
-    inputUrl.value = url;
-    currentSettings.url = url;
-    await window.overlayAPI.saveSettings({ url });
-    siteFrame.src = url;
-    showNotification(`Загружается: ${url}`);
-  });
-});
-
 // Hide Mode
 modeRadios.forEach((radio) => {
   radio.addEventListener('change', async (e) => {
@@ -362,21 +378,22 @@ modeRadios.forEach((radio) => {
 
 // Opacity Slider
 opacitySlider.addEventListener('input', (e) => {
-  const val = Number(e.target.value);
-  updateOpacityUI(val);
-  window.overlayAPI.saveSettings({ opacity: val });
+  setOpacity(Number(e.target.value));
 });
 
 // Size and Position
 btnApplySize.addEventListener('click', async () => {
-  const width = Math.max(300, Math.min(2560, Number(inputWidth.value) || 1280));
-  const height = Math.max(300, Math.min(1440, Number(inputHeight.value) || 720));
+  const width = Math.max(320, Math.min(2560, Number(inputWidth.value) || 1280));
+  const height = Math.max(320, Math.min(1440, Number(inputHeight.value) || 720));
 
   inputWidth.value = width;
   inputHeight.value = height;
 
-  await window.overlayAPI.saveSettings({ width, height });
-  showNotification(`Размер окна изменен: ${width}x${height}`);
+  const saved = await window.overlayAPI.saveSettings({ width, height });
+  currentSettings = { ...currentSettings, ...saved };
+  inputWidth.value = saved.width;
+  inputHeight.value = saved.height;
+  showNotification(`Размер окна изменен: ${saved.width}×${saved.height}`);
 });
 
 btnResetPos.addEventListener('click', async () => {
@@ -390,15 +407,12 @@ btnResetPos.addEventListener('click', async () => {
 
 // URL — open button
 btnSaveUrl.addEventListener('click', async () => {
-  let url = inputUrl.value.trim();
-  if (!url) return showNotification('Введите URL сайта');
-  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
-
-  inputUrl.value = url;
-  currentSettings.url = url;
-  await window.overlayAPI.saveSettings({ url });
-  siteFrame.src = url;
-  showNotification(`Загружается: ${url}`);
+  try {
+    await navigateTo(inputUrl.value);
+    closeSettingsModal();
+  } catch (error) {
+    document.getElementById('bookmark-error').textContent = error.message || 'Проверьте адрес сайта';
+  }
 });
 
 // Also allow pressing Enter in URL input to navigate
@@ -616,7 +630,7 @@ window.overlayAPI.onDownloadProgress((data) => {
 
 if (btnUpdateBadge) {
   btnUpdateBadge.addEventListener('click', () => {
-    openSettingsModal();
+    openSettingsModal('updates');
     const section = document.getElementById('section-updates');
     if (section) {
       section.scrollIntoView({ behavior: 'smooth' });
@@ -634,6 +648,7 @@ window.overlayAPI.onOverlayStateChanged(({ isActive, hideMode, hotkey }) => {
   if (isActive) {
     showNotification(`Оверлей активен (${currentSettings.hotkey} — скрыть)`);
   } else {
+    closeOpacityPopover();
     closeSettingsModal();
     if (currentSettings.hideMode === 'clickthrough') {
       showNotification('Мышь освобождена — клики идут в игру');
@@ -660,6 +675,178 @@ window.overlayAPI.onUpdateAvailable((info) => {
 
 window.overlayAPI.onUpdateCheckResult((info) => {
   renderUpdateInfo(info);
+});
+
+// ============ Quick controls and settings navigation ============
+function selectSettingsTab(name) {
+  stopRecordingHotkey();
+  document.querySelectorAll('[data-tab]').forEach(tab => {
+    const active = tab.dataset.tab === name;
+    tab.setAttribute('aria-selected', String(active));
+    tab.tabIndex = active ? 0 : -1;
+    document.getElementById(`panel-${tab.dataset.tab}`).classList.toggle('hidden', !active);
+  });
+  document.querySelector('.modal-body').scrollTop = 0;
+}
+document.querySelectorAll('[data-tab]').forEach((tab, index, tabs) => {
+  tab.addEventListener('click', () => selectSettingsTab(tab.dataset.tab));
+  tab.addEventListener('keydown', event => {
+    let next;
+    if (event.key === 'ArrowRight') next = (index + 1) % tabs.length;
+    if (event.key === 'ArrowLeft') next = (index + tabs.length - 1) % tabs.length;
+    if (event.key === 'Home') next = 0;
+    if (event.key === 'End') next = tabs.length - 1;
+    if (next === undefined) return;
+    event.preventDefault();
+    selectSettingsTab(tabs[next].dataset.tab);
+    tabs[next].focus();
+  });
+});
+settingsModal.addEventListener('keydown', event => {
+  if (event.key !== 'Tab') return;
+  const controls = [...settingsModal.querySelectorAll('button, input, [tabindex="0"]')]
+    .filter(element => !element.disabled && element.tabIndex >= 0 && element.getClientRects().length);
+  const first = controls[0], last = controls[controls.length - 1];
+  if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+  else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+});
+function closeOpacityPopover() {
+  document.getElementById('opacity-popover').classList.add('hidden');
+  opacityBadge.setAttribute('aria-expanded', 'false');
+}
+opacityBadge.addEventListener('click', () => {
+  const popover = document.getElementById('opacity-popover');
+  const opening = popover.classList.contains('hidden');
+  popover.classList.toggle('hidden', !opening);
+  opacityBadge.setAttribute('aria-expanded', String(opening));
+  if (opening) document.getElementById('quick-opacity-slider').focus();
+});
+document.addEventListener('pointerdown', event => {
+  if (!event.target.closest('#quick-opacity')) closeOpacityPopover();
+});
+document.getElementById('quick-opacity').addEventListener('keydown', event => {
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeOpacityPopover();
+    opacityBadge.focus();
+  }
+});
+function setOpacity(value) {
+  currentSettings.opacity = value;
+  updateOpacityUI(value);
+  window.overlayAPI.saveSettings({ opacity: value });
+}
+document.getElementById('quick-opacity-slider').addEventListener('input', event => setOpacity(Number(event.target.value)));
+document.querySelectorAll('[data-window-preset]').forEach(button => {
+  button.addEventListener('click', async () => {
+    const bounds = await window.overlayAPI.applyWindowPreset(button.dataset.windowPreset);
+    if (!bounds) return;
+    inputWidth.value = bounds.width;
+    inputHeight.value = bounds.height;
+    showNotification(`Положение: ${button.textContent.trim()}`);
+  });
+});
+
+// ============ Personal bookmarks ============
+let editingBookmark = null;
+const bookmarkName = document.getElementById('bookmark-name');
+const bookmarkUrl = document.getElementById('bookmark-url');
+const bookmarkError = document.getElementById('bookmark-error');
+function resetBookmarkEditor() {
+  editingBookmark = null;
+  document.getElementById('bookmark-form').reset();
+  document.getElementById('btn-save-bookmark').textContent = 'Добавить';
+  document.getElementById('btn-cancel-bookmark').classList.add('hidden');
+  bookmarkError.textContent = '';
+}
+async function navigateTo(value) {
+  const url = normalizeUrl(value);
+  await window.overlayAPI.saveSettings({ url });
+  currentSettings.url = url;
+  inputUrl.value = url;
+  siteFrame.src = url;
+  renderBookmarks();
+}
+async function saveBookmarks(items) {
+  const bookmarks = normalizeBookmarks(items);
+  await window.overlayAPI.saveSettings({ bookmarks });
+  currentSettings.bookmarks = bookmarks;
+  renderBookmarks();
+}
+function renderBookmarks() {
+  const shortcuts = document.getElementById('bookmark-shortcuts');
+  const list = document.getElementById('bookmark-list');
+  shortcuts.replaceChildren();
+  list.replaceChildren();
+  const bookmarks = normalizeBookmarks(currentSettings.bookmarks);
+  let activeUrl;
+  try { activeUrl = normalizeUrl(currentSettings.url); } catch { activeUrl = ''; }
+  bookmarks.forEach((bookmark, index) => {
+    const shortcut = document.createElement('button');
+    shortcut.className = 'bookmark-shortcut dock-item';
+    shortcut.textContent = bookmark.name;
+    shortcut.title = bookmark.url;
+    shortcut.setAttribute('aria-current', bookmark.url === activeUrl ? 'page' : 'false');
+    shortcut.addEventListener('click', () => navigateTo(bookmark.url).catch(error => showNotification(error.message)));
+    shortcuts.append(shortcut);
+    const row = document.createElement('div');
+    row.className = 'bookmark-row';
+    const info = document.createElement('div');
+    const name = document.createElement('strong'); name.textContent = bookmark.name;
+    const address = document.createElement('span'); address.textContent = bookmark.url;
+    info.append(name, address);
+    const edit = document.createElement('button');
+    edit.className = 'toolbar-button'; edit.textContent = 'Изменить';
+    edit.setAttribute('aria-label', `Изменить ${bookmark.name}`);
+    edit.addEventListener('click', () => {
+      editingBookmark = index;
+      bookmarkName.value = bookmark.name; bookmarkUrl.value = bookmark.url;
+      document.getElementById('btn-save-bookmark').textContent = 'Сохранить';
+      document.getElementById('btn-cancel-bookmark').classList.remove('hidden');
+      bookmarkName.focus();
+    });
+    const remove = document.createElement('button');
+    remove.className = 'toolbar-button'; remove.textContent = '×';
+    remove.setAttribute('aria-label', `Удалить ${bookmark.name}`);
+    remove.addEventListener('click', async () => {
+      try {
+        await saveBookmarks(bookmarks.filter((_, i) => i !== index));
+        resetBookmarkEditor();
+        document.getElementById('btn-bookmark-current').focus();
+      } catch { bookmarkError.textContent = 'Не удалось сохранить закладки'; }
+    });
+    row.append(info, edit, remove); list.append(row);
+  });
+  if (!bookmarks.length) {
+    const empty = document.createElement('span');
+    empty.className = 'setting-desc'; empty.textContent = 'Добавьте любимые сайты через ＋'; shortcuts.append(empty);
+  }
+}
+document.getElementById('bookmark-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  try {
+    const url = normalizeUrl(bookmarkUrl.value);
+    const bookmarks = normalizeBookmarks(currentSettings.bookmarks);
+    if (bookmarks.some((bookmark, index) => bookmark.url === url && index !== editingBookmark)) throw new Error('Этот адрес уже есть в закладках');
+    if (editingBookmark === null && bookmarks.length >= 30) throw new Error('Можно сохранить до 30 закладок');
+    const bookmark = { name: bookmarkName.value.trim() || new URL(url).hostname, url };
+    if (editingBookmark === null) bookmarks.push(bookmark);
+    else bookmarks[editingBookmark] = bookmark;
+    await saveBookmarks(bookmarks);
+    resetBookmarkEditor();
+    bookmarkName.focus();
+  } catch (error) { bookmarkError.textContent = error.message || 'Не удалось сохранить закладку'; }
+});
+document.getElementById('btn-cancel-bookmark').addEventListener('click', resetBookmarkEditor);
+document.getElementById('btn-bookmark-current').addEventListener('click', () => {
+  resetBookmarkEditor();
+  bookmarkUrl.value = currentSettings.url;
+  try { bookmarkName.value = new URL(currentSettings.url).hostname.replace(/^www\./, ''); } catch {}
+  bookmarkName.focus();
+});
+document.getElementById('btn-manage-bookmarks').addEventListener('click', () => {
+  openSettingsModal('general');
+  document.getElementById('btn-bookmark-current').click();
 });
 
 // ============ Initialization ============
@@ -696,8 +883,8 @@ dockGroups.forEach((group) => {
   group.addEventListener('pointermove', (event) => {
     if (motionPreference.matches || !hoverCapability.matches || event.pointerType === 'touch') return;
     const bounds = group.getBoundingClientRect();
-    const x = event.clientX - bounds.left;
-    const y = event.clientY - bounds.top;
+    const x = event.clientX - bounds.left + group.scrollLeft;
+    const y = event.clientY - bounds.top + group.scrollTop;
     group.querySelectorAll('button').forEach((button) => {
       // offsetLeft/Top are unaffected by the visual scale applied below.
       const distance = Math.hypot(x - button.offsetLeft - button.offsetWidth / 2,
