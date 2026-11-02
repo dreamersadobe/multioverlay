@@ -579,9 +579,9 @@ ipcMain.handle('check-for-updates', async () => {
   return info;
 });
 
-ipcMain.handle('open-external', (event, url) => {
+ipcMain.handle('open-external', async (event, url) => {
   if (url && typeof url === 'string' && /^https?:\/\//i.test(url)) {
-    shell.openExternal(url);
+    await shell.openExternal(url);
     return true;
   }
   return false;
@@ -744,6 +744,8 @@ app.whenReady().then(() => {
       if (overlayWindow && !overlayWindow.isDestroyed()) {
         overlayWindow.webContents.send('update-available', info);
       }
+    } else if (overlayWindow && !overlayWindow.isDestroyed()) {
+      overlayWindow.webContents.send('update-check-result', info);
     }
   }, 3500);
 });

@@ -37,6 +37,7 @@ function mainHarness() {
   const handlers = new Map();
   const area = { x: -1280, y: 40, width: 1280, height: 760 };
   const events = [];
+  const externalUrls = [];
   let opacity, bounds;
   class Window {
     constructor(options) {
@@ -54,6 +55,7 @@ function mainHarness() {
     BrowserWindow: Window,
     screen: { getPrimaryDisplay: () => ({ workArea: area }), getDisplayMatching: () => ({ workArea: area }) },
     ipcMain: { handle: (name, fn) => handlers.set(name, fn), on() {} },
+    shell: { openExternal: async url => { externalUrls.push(url); } },
     globalShortcut: {}, Menu: { buildFromTemplate: items => items },
   };
   const context = {
@@ -62,7 +64,7 @@ function mainHarness() {
     setTimeout: () => 0, clearTimeout() {}, process,
   };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../main.js'), 'utf8') + '\ncreateOverlayWindow(); globalThis.window = overlayWindow; globalThis.recover = recoverWindowBounds; globalThis.deactivate = deactivateOverlay; tray = { setContextMenu: value => { globalThis.menu = value; } };', context);
-  return { handlers, events, context, area, get opacity() { return opacity; }, get bounds() { return bounds; } };
+  return { handlers, events, externalUrls, context, area, get opacity() { return opacity; }, get bounds() { return bounds; } };
 }
 
 test('settings stay opaque while editing, restore saved opacity and deactivate correctly', () => {
@@ -124,4 +126,15 @@ test('language preference persists and updates native tray labels immediately', 
   assert(h.context.menu.some(item => item.label === '⚙️ Настройки...'));
   save(event, { language: 'unknown' });
   assert.equal(h.handlers.get('get-settings')().language, 'ru');
+});
+
+
+test('community links open through the system browser and reject non-web schemes', async () => {
+  const h = mainHarness();
+  const open = h.handlers.get('open-external');
+  assert.equal(await open({}, 'https://t.me/fullofowndreams'), true);
+  assert.deepEqual(h.externalUrls, ['https://t.me/fullofowndreams']);
+  assert.equal(await open({}, 'javascript:alert(1)'), false);
+  assert.equal(await open({}, 'file:///tmp/test'), false);
+  assert.equal(h.externalUrls.length, 1);
 });

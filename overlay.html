@@ -65,6 +65,7 @@
   <nav id="bookmarks-bar" aria-label="Любимые сайты">
     <span class="rail-label" aria-hidden="true">БЫСТРЫЙ<br>ДОСТУП</span>
     <div id="bookmark-shortcuts" class="presets-buttons"></div>
+    <a id="btn-support" class="support-button" href="https://t.me/fullofowndreams" data-community-link title="Поддержать проект в Telegram" aria-label="Поддержать проект в Telegram"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg><span>Поддержать</span></a>
     <button id="btn-manage-bookmarks" class="toolbar-button" title="Добавить или изменить закладки" aria-label="Управление закладками">＋</button>
   </nav>
 
@@ -78,6 +79,7 @@
   <main id="main-content">
     <iframe
       id="site-frame"
+      title="Сайт в оверлее"
       src="about:blank"
       frameborder="0"
       allowfullscreen
@@ -103,12 +105,20 @@
         </button>
       </div>
 
+      <aside class="settings-sidebar">
       <div class="settings-tabs" role="tablist" aria-label="Разделы настроек">
         <button id="tab-general" role="tab" aria-selected="true" aria-controls="panel-general" data-tab="general" data-number="01">Основное</button>
         <button id="tab-appearance" role="tab" aria-selected="false" aria-controls="panel-appearance" data-tab="appearance" data-number="02" tabindex="-1">Внешний вид</button>
         <button id="tab-hotkeys" role="tab" aria-selected="false" aria-controls="panel-hotkeys" data-tab="hotkeys" data-number="03" tabindex="-1">Клавиши</button>
         <button id="tab-updates" role="tab" aria-selected="false" aria-controls="panel-updates" data-tab="updates" data-number="04" tabindex="-1">Обновления</button>
       </div>
+      <a class="community-card" href="https://t.me/fullofowndreams" data-community-link aria-label="Канал @fullofowndreams в Telegram">
+        <span class="community-top"><span class="telegram-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 3-7 18-4-7-7-4 18-7Z"/><path d="m10 14 6-6"/></svg></span><span class="external-arrow" aria-hidden="true">↗</span></span>
+        <strong>Будем на связи</strong>
+        <span class="community-handle">@fullofowndreams</span>
+        <span class="community-caption">Наш канал в Telegram</span>
+      </a>
+      </aside>
       <div class="modal-body">
         <div id="panel-general" class="settings-panel" role="tabpanel" aria-labelledby="tab-general" tabindex="0">
           <div class="panel-intro"><span class="eyebrow">01 / БЫСТРЫЙ ДОСТУП</span><h2>Всё под рукой</h2><p>Соберите свою коллекцию сайтов и выберите поведение оверлея.</p></div>
@@ -121,7 +131,7 @@
             <span class="setting-desc">Вставьте ссылку на любой сайт — он отобразится поверх игры в оверлее.</span>
           </div>
           <div class="url-input-box">
-            <input type="url" id="input-url" value="" placeholder="https://example.com" spellcheck="false" autocomplete="off">
+            <input type="url" id="input-url" aria-label="Адрес сайта" value="" placeholder="https://example.com" spellcheck="false" autocomplete="off">
             <button id="btn-save-url" class="btn primary">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
               <span>Открыть</span>
@@ -205,7 +215,7 @@
             </span>
             <span id="opacity-slider-val" class="slider-badge">85%</span>
           </div>
-          <input type="range" id="opacity-slider" min="20" max="100" step="5" value="85" class="custom-slider">
+          <input type="range" id="opacity-slider" aria-label="Непрозрачность оверлея" min="20" max="100" step="5" value="85" class="custom-slider">
           <div class="slider-ticks">
             <span>20% (Прозрачно)</span>
             <span>85% (Рекомендуется)</span>
@@ -274,13 +284,19 @@
         </div>
         <div id="panel-updates" class="settings-panel hidden" role="tabpanel" aria-labelledby="tab-updates" tabindex="0">
           <div class="panel-intro"><span class="eyebrow">04 / ПРИЛОЖЕНИЕ</span><h2>Всегда в форме</h2><p>Проверяйте и устанавливайте новые версии прямо здесь.</p></div>
+          <section class="project-card" aria-label="Поддержка проекта">
+            <div class="project-card-top"><span class="project-symbol"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg></span><span class="eyebrow">СДЕЛАНО ДЛЯ ВАШИХ ИГР</span></div>
+            <h3>Нравится оверлей?</h3>
+            <p>Поддержите проект или загляните в наш Telegram. Будем рады видеть вас.</p>
+            <div class="project-actions"><a class="support-button" href="https://t.me/fullofowndreams" data-community-link><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg><span>Поддержать</span><span class="external-arrow" aria-hidden="true">↗</span></a><a class="channel-link" href="https://t.me/fullofowndreams" data-community-link>@fullofowndreams <span class="external-arrow" aria-hidden="true">↗</span></a></div>
+          </section>
 <section data-settings-page="updates" class="setting-group" id="section-updates">
           <div class="setting-header">
             <span class="setting-title">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
               <span>Обновления программы</span>
             </span>
-            <span class="setting-desc" id="app-version-label">Текущая версия: v2.5.0</span>
+            <span class="setting-desc" id="app-version-label">Текущая версия: v2.6.0</span>
           </div>
           <div class="update-box">
             <div id="update-status-text" class="update-status-text">Проверка наличия обновлений...</div>

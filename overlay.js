@@ -699,8 +699,8 @@ document.querySelectorAll('[data-tab]').forEach((tab, index, tabs) => {
   tab.addEventListener('click', () => selectSettingsTab(tab.dataset.tab));
   tab.addEventListener('keydown', event => {
     let next;
-    if (event.key === 'ArrowRight') next = (index + 1) % tabs.length;
-    if (event.key === 'ArrowLeft') next = (index + tabs.length - 1) % tabs.length;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = (index + 1) % tabs.length;
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next = (index + tabs.length - 1) % tabs.length;
     if (event.key === 'Home') next = 0;
     if (event.key === 'End') next = tabs.length - 1;
     if (next === undefined) return;
@@ -711,7 +711,7 @@ document.querySelectorAll('[data-tab]').forEach((tab, index, tabs) => {
 });
 settingsModal.addEventListener('keydown', event => {
   if (event.key !== 'Tab') return;
-  const controls = [...settingsModal.querySelectorAll('button, input, select, [tabindex="0"]')]
+  const controls = [...settingsModal.querySelectorAll('button, input, select, a[href], [tabindex="0"]')]
     .filter(element => !element.disabled && element.tabIndex >= 0 && element.getClientRects().length);
   const first = controls[0], last = controls[controls.length - 1];
   if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
@@ -830,6 +830,8 @@ function renderBookmarks() {
   if (!bookmarks.length) {
     const empty = document.createElement('span');
     empty.className = 'setting-desc'; setText(empty, 'Добавьте любимые сайты через ＋'); shortcuts.append(empty);
+    const hint = document.createElement('p'); hint.className = 'bookmark-empty';
+    setText(hint, 'Здесь появятся ваши любимые сайты. Добавьте первую закладку выше.'); list.append(hint);
   }
 }
 document.getElementById('bookmark-form').addEventListener('submit', async event => {
@@ -869,6 +871,18 @@ document.getElementById('language-select').addEventListener('change', async even
     event.target.value = currentSettings.language;
     showNotification(error.message);
   }
+});
+
+// Community links always leave the embedded site and open in the user's browser.
+document.querySelectorAll('[data-community-link]').forEach(link => {
+  link.addEventListener('click', async event => {
+    event.preventDefault();
+    try {
+      if (!await window.overlayAPI.openExternal(link.href)) throw new Error();
+    } catch {
+      showNotification('Не удалось открыть Telegram. Попробуйте ещё раз.');
+    }
+  });
 });
 
 // ============ Initialization ============

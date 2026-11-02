@@ -154,6 +154,20 @@
   "Файл обновления не найден": "Update file not found"
 };
   english['Ошибка скачивания файла'] = 'Could not download the file';
+  Object.assign(english, {
+  "Сайт в оверлее": "Website in the overlay",
+  "Поддержать": "Support",
+  "Поддержать проект в Telegram": "Support the project on Telegram",
+  "Канал @fullofowndreams в Telegram": "@fullofowndreams on Telegram",
+  "Будем на связи": "Let's stay in touch",
+  "Наш канал в Telegram": "Our Telegram channel",
+  "Поддержка проекта": "Support the project",
+  "СДЕЛАНО ДЛЯ ВАШИХ ИГР": "MADE FOR YOUR GAMES",
+  "Нравится оверлей?": "Enjoying the overlay?",
+  "Поддержите проект или загляните в наш Telegram. Будем рады видеть вас.": "Support the project or stop by our Telegram. We'd love to see you there.",
+  "Не удалось открыть Telegram. Попробуйте ещё раз.": "Could not open Telegram. Please try again.",
+  "Здесь появятся ваши любимые сайты. Добавьте первую закладку выше.": "Your favorite sites will appear here. Add your first bookmark above."
+});
   let language = 'ru';
   const patterns = Object.entries(english).filter(([source]) => source.includes('{')).map(([source, target]) => {
     const names = [...source.matchAll(/\{(\w+)\}/g)].map(match => match[1]);
