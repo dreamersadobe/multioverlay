@@ -680,3 +680,37 @@ async function init() {
 }
 
 init();
+
+// Dock magnification uses layout coordinates so scaling never moves hit targets.
+const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
+const hoverCapability = window.matchMedia('(hover: hover) and (pointer: fine)');
+const dockGroups = document.querySelectorAll('#title-bar-controls, .presets-buttons');
+const resetDock = () => dockGroups.forEach((group) => {
+  group.querySelectorAll('button').forEach((button) => {
+    button.style.removeProperty('--dock-scale');
+  });
+});
+
+dockGroups.forEach((group) => {
+  group.querySelectorAll('button').forEach((button) => button.classList.add('dock-item'));
+  group.addEventListener('pointermove', (event) => {
+    if (motionPreference.matches || !hoverCapability.matches || event.pointerType === 'touch') return;
+    const bounds = group.getBoundingClientRect();
+    const x = event.clientX - bounds.left;
+    const y = event.clientY - bounds.top;
+    group.querySelectorAll('button').forEach((button) => {
+      // offsetLeft/Top are unaffected by the visual scale applied below.
+      const distance = Math.hypot(x - button.offsetLeft - button.offsetWidth / 2,
+        y - button.offsetTop - button.offsetHeight / 2);
+      const influence = Math.max(0, 1 - distance / 90);
+      button.style.setProperty('--dock-scale', button.disabled ? 1 : 1 + 0.18 * influence * influence);
+    });
+  });
+  group.addEventListener('pointerleave', resetDock);
+  group.addEventListener('pointercancel', resetDock);
+});
+motionPreference.addEventListener('change', resetDock);
+hoverCapability.addEventListener('change', resetDock);
+window.addEventListener('blur', resetDock);
+document.addEventListener('visibilitychange', resetDock);
+window.overlayAPI.onOverlayStateChanged(resetDock);

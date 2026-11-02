@@ -991,3 +991,83 @@ input[type="url"]:focus, input[type="number"]:focus {
 .hidden {
   display: none !important;
 }
+
+/* Dock-style feedback: scale changes paint only, preserving the control layout. */
+#title-bar-controls,
+.presets-buttons {
+  position: relative;
+  isolation: isolate;
+}
+
+button,
+.radio-card .card-ui,
+.custom-checkbox .checkbox-box {
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--accent-hover);
+  outline-offset: 3px;
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  button.dock-item {
+    position: relative;
+    scale: var(--dock-scale, 1);
+    transition: scale 180ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 180ms cubic-bezier(0.22, 1, 0.36, 1),
+      background 180ms ease, color 180ms ease, border-color 180ms ease,
+      box-shadow 180ms ease;
+  }
+
+  #title-bar-controls button:hover,
+  button.dock-item:focus-visible {
+    transform: translateY(-1px);
+    z-index: 1;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+  }
+
+  .btn:hover:not(:disabled),
+  .hotkey-btn:hover,
+  .modal-close-btn:hover,
+  .badge-update:hover {
+    transform: translateY(-2px);
+    scale: 1.025;
+    transition-duration: 180ms;
+  }
+
+  .radio-card:hover .card-ui {
+    transform: translateY(-2px);
+  }
+
+  .custom-checkbox:hover .checkbox-box {
+    scale: 1.12;
+  }
+
+  button:active:not(:disabled),
+  button.dock-item:active:not(:disabled) {
+    transform: translateY(0);
+    scale: 0.96;
+    transition-duration: 80ms;
+  }
+}
+
+button:disabled {
+  cursor: default;
+  scale: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+
+  button, .preset-key kbd, .card-ui, .checkbox-box,
+  .custom-slider::-webkit-slider-thumb {
+    transform: none !important;
+    scale: 1 !important;
+  }
+}
