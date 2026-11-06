@@ -1,6 +1,18 @@
 /* Russian source strings with English translations; no network dependency. */
 (function (root) {
   const english = {
+  "Скачать обновление": "Download update",
+  "Перезапустить и обновить": "Restart and update",
+  "Применяем обновление...": "Applying update...",
+  "Готово к перезапуску": "Ready to restart",
+  "Автообновления доступны в установленной версии Nimbo для Windows.": "Automatic updates are available in the installed Windows version of Nimbo.",
+  "Скачиваем обновление в фоне...": "Downloading update in the background...",
+  "Обновление готово. Перезапустите Nimbo, когда будет удобно.": "Update ready. Restart Nimbo whenever convenient.",
+  "Обновления скачиваются в фоне. Нажмите «Перезапустить и обновить», когда будет удобно. Настройки и закладки сохранятся.": "Updates download in the background. Click “Restart and update” when convenient. Your settings and bookmarks will be preserved.",
+  "Доступно обновление {version}": "Update {version} is available",
+  "Обновление ещё не готово": "The update is not ready yet",
+  "Не удалось проверить обновления": "Could not check for updates",
+  "Недопустимый запрос обновления": "Invalid update request",
   "Настройки": "Settings",
   "Ваше пространство поверх игры.": "Your space above the game.",
   "Текущий статус оверлея": "Current overlay status",

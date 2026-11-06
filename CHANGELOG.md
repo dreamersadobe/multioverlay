@@ -1,23 +1,20 @@
-# Nimbo 3.0.0 · Liquid Glass
+# Nimbo 3.1.0 · Обновления без мастера
 
-Минималистичный интерфейс в стиле Liquid Glass: полупрозрачные поверхности, мягкие блики, округлые кнопки и спокойная графитовая палитра.
+- Новые версии скачиваются в фоне через electron-updater с прогрессом и возможностью отмены.
+- Кнопка «Перезапустить и обновить» применяет обновление без страниц мастера и снова открывает Nimbo. Приложение не закрывается само во время игры.
+- Перед установкой проверяется SHA-512; для подписанных сборок также проверяется издатель. Незавершённая или повреждённая загрузка не запускается.
+- Настройки, закладки, положение окна и сеансы сайтов сохраняются.
+- В релиз добавлены `latest.yml` и `.blockmap` для автоматического обновления.
+- Подготовлено подключение сертификата подписи Windows через секреты GitHub Actions. При настроенном сертификате сборка и публикация требуют корректной подписи приложения и установщика.
 
-- Компактная панель закладок и стеклянные элементы управления.
-- Настройки в одну колонку с вкладками сверху; поддержка небольших окон от 320×320.
-- Новые переключатели, поля, диалоги и инструкция первого запуска.
-- Более сдержанная анимация; поддержка системного уменьшения движения.
-- Русский и английский интерфейс.
-- Game Overlay переименован в Nimbo. Прежний профиль, закладки и сеансы сайтов сохраняются.
-- Windows-установщик с выбором языка и папки установки. Исправлен запуск установщика при обновлении из приложения.
+С версии 3.0.0 потребуется **один раз** обновиться прежним способом через установщик. Начиная с 3.1.0 последующие обновления применяются по кнопке в приложении.
 
-## Установка
+**Цифровая подпись:** сертификат пока не настроен, поэтому текущая сборка остаётся неподписанной. Имя автора «Dreamer» в метаданных не является подтверждённым издателем Windows. Даже после подключения доверенной подписи SmartScreen отдельно учитывает репутацию приложения.
 
-Скачайте `Nimbo-Setup-3.0.0.exe` и запустите мастер. Для обновления установите Nimbo поверх предыдущей версии. Node.js не требуется.
-
-Windows 10/11, x64. В игре выберите безрамочный оконный режим. Клавиша открытия и скрытия по умолчанию — **F2**.
+Windows 10/11, x64. Для предыдущей установки «для всех пользователей» обновление может запросить права администратора.
 
 ---
 
-Minimal Liquid Glass redesign with translucent surfaces, soft highlights, rounded controls and a neutral graphite palette. Compact bookmarks, single-column settings, responsive layouts, new switches and onboarding, reduced-motion support, and Russian/English localization.
+Updates download in the background and are applied with **Restart and update**, without installer pages. Settings, bookmarks and site sessions are preserved. Downloads are checked against SHA-512 and, for signed builds, the configured publisher. Incomplete or invalid downloads cannot be installed.
 
-Game Overlay is now Nimbo. Existing preferences, bookmarks and site sessions are preserved. Download `Nimbo-Setup-3.0.0.exe` for Windows 10/11 x64; install over the previous version to upgrade.
+Upgrading from 3.0.0 requires one last manual installer run. From 3.1.0 onward, updates are applied inside Nimbo. Windows code-signing integration is prepared, but no certificate is configured yet, so this build remains unsigned.

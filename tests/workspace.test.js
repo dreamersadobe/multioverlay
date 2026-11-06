@@ -42,7 +42,7 @@ function mainHarness(options = {}) {
   class Window {
     constructor(options) {
       bounds = { x: options.x, y: options.y, width: options.width, height: options.height };
-      this.webContents = { send: (...args) => events.push(args), session: { webRequest: { onHeadersReceived() {} } } };
+      this.webContents = { mainFrame: {}, send: (...args) => events.push(args), session: { webRequest: { onHeadersReceived() {} } } };
     }
     setBounds(value) { bounds = value; }
     getBounds() { return bounds; }
@@ -64,7 +64,7 @@ function mainHarness(options = {}) {
     __dirname: path.resolve(__dirname, '..'), console, Buffer,
     setTimeout: () => 0, clearTimeout() {}, process: options.platform ? { ...process, platform: options.platform } : process,
   };
-  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../main.js'), 'utf8') + '\ncreateOverlayWindow(); globalThis.window = overlayWindow; globalThis.recover = recoverWindowBounds; globalThis.deactivate = deactivateOverlay; globalThis.setUpdatePath = value => { downloadedUpdatePath = value; }; tray = { setContextMenu: value => { globalThis.menu = value; } };', context);
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../main.js'), 'utf8') + '\ncreateOverlayWindow(); globalThis.window = overlayWindow; globalThis.recover = recoverWindowBounds; globalThis.deactivate = deactivateOverlay; tray = { setContextMenu: value => { globalThis.menu = value; } };', context);
   return { handlers, events, externalUrls, context, area, get opacity() { return opacity; }, get bounds() { return bounds; } };
 }
 
@@ -140,26 +140,20 @@ test('community links open through the system browser and reject non-web schemes
   assert.equal(h.externalUrls.length, 1);
 });
 
-test('Windows updates quit only after the installer starts, and report launch failures', async () => {
-  const { EventEmitter } = require('node:events');
-  for (const succeeds of [true, false]) {
-    const child = new EventEmitter();
-    let unreferenced = false;
-    child.unref = () => { unreferenced = true; };
-    const h = mainHarness({ platform: 'win32', spawn: file => {
-      assert.equal(file, '/mock/update.exe');
-      return child;
-    } });
-    h.context.setUpdatePath('/mock/update.exe');
-    const applying = h.handlers.get('apply-update')();
-    assert(!h.events.some(([name]) => name === 'quit'));
-    if (succeeds) child.emit('spawn');
-    else child.emit('error', new Error('Access denied'));
-    const result = await applying;
-    assert.equal(result.success, succeeds);
-    assert.equal(unreferenced, succeeds);
-    assert.equal(h.events.some(([name]) => name === 'quit'), succeeds);
-    assert.equal(h.events.some(([name, event]) => name === 'remove-listeners' && event === 'close'), succeeds);
-    if (!succeeds) assert.equal(result.error, 'Access denied');
+test('only the trusted main frame can control updates', async () => {
+  const h = mainHarness();
+  const sender = h.context.window.webContents;
+  const trusted = { sender, senderFrame: sender.mainFrame };
+  for (const name of ['get-update-state', 'check-for-updates', 'download-update', 'cancel-download', 'apply-update']) {
+    for (const event of [{ sender: {} }, { sender, senderFrame: {} }, { sender }]) {
+      const result = await h.handlers.get(name)(event);
+      assert.equal(result.success, false, name);
+      assert.equal(result.error, 'Недопустимый запрос обновления', name);
+    }
   }
+  const state = h.handlers.get('get-update-state')(trusted);
+  assert.equal(state.status, 'unavailable');
+  assert.equal(state.supported, false);
+  assert.equal((await h.handlers.get('apply-update')(trusted)).success, false);
+  assert(!h.events.some(([name]) => name === 'quit'));
 });

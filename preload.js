@@ -15,10 +15,10 @@ contextBridge.exposeInMainWorld('overlayAPI', {
   // Updates & external links
   getVersion: () => ipcRenderer.invoke('get-version'),
   checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
-  downloadUpdate: (url) => ipcRenderer.invoke('download-update', url),
+  getUpdateState: () => ipcRenderer.invoke('get-update-state'),
+  downloadUpdate: () => ipcRenderer.invoke('download-update'),
   cancelDownload: () => ipcRenderer.invoke('cancel-download'),
   applyUpdate: () => ipcRenderer.invoke('apply-update'),
-  showDownloadedFile: () => ipcRenderer.invoke('show-downloaded-file'),
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
 
   // Events from main process
@@ -29,18 +29,12 @@ contextBridge.exposeInMainWorld('overlayAPI', {
     ipcRenderer.on('settings-updated', (_, settings) => callback(settings));
   },
   onOpenSettings: (callback) => {
-    ipcRenderer.on('open-settings', () => callback());
+    ipcRenderer.on('open-settings', (_, page) => callback(page));
   },
   onReloadWebview: (callback) => {
     ipcRenderer.on('reload-webview', () => callback());
   },
-  onUpdateAvailable: (callback) => {
-    ipcRenderer.on('update-available', (_, info) => callback(info));
-  },
-  onUpdateCheckResult: (callback) => {
-    ipcRenderer.on('update-check-result', (_, info) => callback(info));
-  },
-  onDownloadProgress: (callback) => {
-    ipcRenderer.on('download-progress', (_, data) => callback(data));
+  onUpdateState: (callback) => {
+    ipcRenderer.on('update-state', (_, state) => callback(state));
   },
 });

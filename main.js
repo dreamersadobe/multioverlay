@@ -4,17 +4,28 @@ const fs = require('fs');
 const { t } = require('./i18n');
 const { normalizeBookmarks, fitBounds, presetBounds } = require('./overlay-utils');
 const { configureProfile } = require('./app-profile');
+const { createUpdateController } = require('./app-updater');
 
 configureProfile(app);
 if (process.platform === 'win32') app.setAppUserModelId('com.gameoverlay.app');
 let settingsOpen = false;
 
-const GITHUB_REPO = 'dreamersadobe/multioverlay';
-
 let overlayWindow = null;
 let tray = null;
 let isActive = true; // Overlay interactive status (capturing mouse or not)
 let cachedUpdateInfo = null;
+let quittingForUpdate = false;
+const updates = createUpdateController({
+  updater: process.platform === 'win32' && app.isPackaged ? require('electron-updater').autoUpdater : null,
+  currentVersion: app.getVersion(),
+  onState: state => {
+    cachedUpdateInfo = state;
+    updateTrayMenu();
+    if (overlayWindow && !overlayWindow.isDestroyed()) overlayWindow.webContents.send('update-state', state);
+  },
+  beforeInstall: () => { quittingForUpdate = true; },
+  onInstallError: () => { quittingForUpdate = false; },
+});
 
 const DEFAULT_CONFIG = {
   hotkey: 'F2',
@@ -154,6 +165,7 @@ function createOverlayWindow() {
 
   // Prevent closing when user clicks native close, just deactivate
   overlayWindow.on('close', (e) => {
+    if (quittingForUpdate) return;
     e.preventDefault();
     deactivateOverlay();
   });
@@ -181,96 +193,8 @@ function activateOverlay() {
   updateTrayMenu();
 }
 
-function parseSemver(v) {
-  if (!v || typeof v !== 'string') return [0, 0, 0];
-  const cleaned = v.trim().replace(/^[vV]/, '');
-  const match = cleaned.match(/^(\d+)(?:\.(\d+))?(?:\.(\d+))?/);
-  if (!match) return [0, 0, 0];
-  return [
-    parseInt(match[1], 10) || 0,
-    parseInt(match[2], 10) || 0,
-    parseInt(match[3], 10) || 0,
-  ];
-}
-
-function isNewerVersion(remote, local) {
-  const r = parseSemver(remote);
-  const l = parseSemver(local);
-  for (let i = 0; i < 3; i++) {
-    if (r[i] > l[i]) return true;
-    if (r[i] < l[i]) return false;
-  }
-  return false;
-}
-
 async function checkForUpdates() {
-  const currentVersion = app.getVersion();
-  try {
-    const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
-      headers: {
-        'User-Agent': 'Nimbo-App',
-        'Accept': 'application/vnd.github.v3+json',
-      },
-    });
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        cachedUpdateInfo = {
-          success: true,
-          hasUpdate: false,
-          currentVersion,
-          message: 'Релизы пока не найдены на GitHub',
-        };
-        return cachedUpdateInfo;
-      }
-      throw new Error(`GitHub API вернул статус ${response.status}`);
-    }
-
-    const data = await response.json();
-    const latestTag = data.tag_name || '';
-    const releaseUrl = data.html_url || `https://github.com/${GITHUB_REPO}/releases/latest`;
-    const releaseName = data.name || latestTag;
-    const body = data.body || '';
-
-    let portableUrl = null;
-    let installerUrl = null;
-
-    if (Array.isArray(data.assets)) {
-      const portableAsset = data.assets.find(
-        (a) => a.name.endsWith('.exe') && !a.name.toLowerCase().includes('setup')
-      );
-      if (portableAsset) portableUrl = portableAsset.browser_download_url;
-
-      const installerAsset = data.assets.find(
-        (a) => a.name.endsWith('.exe') && a.name.toLowerCase().includes('setup')
-      );
-      if (installerAsset) installerUrl = installerAsset.browser_download_url;
-    }
-
-    const downloadUrl = installerUrl || portableUrl || releaseUrl;
-    const hasUpdate = isNewerVersion(latestTag, currentVersion);
-
-    cachedUpdateInfo = {
-      success: true,
-      hasUpdate,
-      currentVersion,
-      latestVersion: latestTag,
-      releaseUrl,
-      downloadUrl,
-      portableUrl,
-      installerUrl,
-      releaseName,
-      releaseNotes: body,
-    };
-
-    return cachedUpdateInfo;
-  } catch (err) {
-    return {
-      success: false,
-      error: err.message || 'Ошибка подключения к GitHub',
-      currentVersion,
-    };
-  }
+  return updates.check();
 }
 
 function deactivateOverlay() {
@@ -412,9 +336,11 @@ function updateTrayMenu() {
 
   if (cachedUpdateInfo && cachedUpdateInfo.hasUpdate) {
     menuTemplate.push({
-      label: t(`🎉 Новая версия ${cachedUpdateInfo.latestVersion}! (Скачать)`, config.language),
+      label: t(cachedUpdateInfo.status === 'downloaded' ? 'Перезапустить и обновить' : `Доступно обновление ${cachedUpdateInfo.latestVersion}`, config.language),
       click: () => {
-        shell.openExternal(cachedUpdateInfo.downloadUrl || cachedUpdateInfo.releaseUrl);
+        activateOverlay();
+        overlayWindow?.webContents.send('open-settings', 'updates');
+        overlayWindow?.webContents.send('update-state', updates.getState());
       },
     });
     menuTemplate.push({ type: 'separator' });
@@ -450,8 +376,8 @@ function updateTrayMenu() {
         updateTrayMenu();
         if (overlayWindow) {
           activateOverlay();
-          overlayWindow.webContents.send('open-settings');
-          overlayWindow.webContents.send('update-check-result', info);
+          overlayWindow.webContents.send('open-settings', 'updates');
+          overlayWindow.webContents.send('update-state', info);
         }
       },
     },
@@ -576,11 +502,7 @@ ipcMain.handle('get-version', () => {
   return app.getVersion();
 });
 
-ipcMain.handle('check-for-updates', async () => {
-  const info = await checkForUpdates();
-  updateTrayMenu();
-  return info;
-});
+ipcMain.handle('check-for-updates', event => updateRequest(event, () => checkForUpdates()));
 
 ipcMain.handle('open-external', async (event, url) => {
   if (url && typeof url === 'string' && /^https?:\/\//i.test(url)) {
@@ -590,151 +512,18 @@ ipcMain.handle('open-external', async (event, url) => {
   return false;
 });
 
-// In-app updater handlers
-let currentDownloadAbortController = null;
-let downloadedUpdatePath = null;
-
-ipcMain.handle('download-update', async (event, customUrl) => {
-  try {
-    const url = customUrl || (cachedUpdateInfo && cachedUpdateInfo.downloadUrl);
-    if (!url) {
-      throw new Error('Ссылка для скачивания обновления не найдена');
-    }
-
-    currentDownloadAbortController = new AbortController();
-    const { signal } = currentDownloadAbortController;
-
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'Nimbo-App' },
-      signal,
-    });
-
-    if (!res.ok) {
-      throw new Error(`Сервер вернул код ${res.status}: ${res.statusText}`);
-    }
-
-    const totalBytes = parseInt(res.headers.get('content-length') || '0', 10);
-    const parsedUrl = new URL(url);
-    const rawFileName = path.basename(parsedUrl.pathname);
-    const fileName = (rawFileName && rawFileName.endsWith('.exe'))
-      ? rawFileName
-      : `Nimbo-Setup-${cachedUpdateInfo ? cachedUpdateInfo.latestVersion : 'Update'}.exe`;
-    const tempDir = app.getPath('temp');
-    downloadedUpdatePath = path.join(tempDir, fileName);
-
-    const { Readable } = require('stream');
-    const nodeReadable = Readable.fromWeb(res.body);
-    const fileStream = fs.createWriteStream(downloadedUpdatePath);
-
-    let downloadedBytes = 0;
-    let lastTime = Date.now();
-    let bytesSinceLast = 0;
-    let lastSpeed = '0.0';
-
-    nodeReadable.on('data', (chunk) => {
-      downloadedBytes += chunk.length;
-      bytesSinceLast += chunk.length;
-
-      const now = Date.now();
-      if (now - lastTime >= 250) {
-        const speedMBps = (bytesSinceLast / (1024 * 1024)) / ((now - lastTime) / 1000);
-        lastSpeed = speedMBps.toFixed(1);
-        lastTime = now;
-        bytesSinceLast = 0;
-
-        const percent = totalBytes > 0 ? Math.min(100, Math.round((downloadedBytes / totalBytes) * 100)) : 0;
-        const transferredMB = (downloadedBytes / (1024 * 1024)).toFixed(1);
-        const totalMB = totalBytes > 0 ? (totalBytes / (1024 * 1024)).toFixed(1) : '?';
-
-        if (overlayWindow && !overlayWindow.isDestroyed()) {
-          overlayWindow.webContents.send('download-progress', {
-            status: 'downloading',
-            percent,
-            transferredMB,
-            totalMB,
-            speed: `${lastSpeed} МБ/с`,
-          });
-        }
-      }
-    });
-
-    await new Promise((resolve, reject) => {
-      fileStream.on('finish', resolve);
-      fileStream.on('error', reject);
-      nodeReadable.on('error', reject);
-      nodeReadable.pipe(fileStream);
-    });
-
-    currentDownloadAbortController = null;
-
-    if (overlayWindow && !overlayWindow.isDestroyed()) {
-      overlayWindow.webContents.send('download-progress', {
-        status: 'completed',
-        percent: 100,
-        filePath: downloadedUpdatePath,
-      });
-    }
-
-    return { success: true, filePath: downloadedUpdatePath };
-  } catch (err) {
-    currentDownloadAbortController = null;
-    if (err.name === 'AbortError') {
-      return { success: false, cancelled: true };
-    }
-    return { success: false, error: err.message || 'Ошибка при загрузке файла' };
-  }
-});
-
-ipcMain.handle('cancel-download', () => {
-  if (currentDownloadAbortController) {
-    currentDownloadAbortController.abort();
-    currentDownloadAbortController = null;
-    if (overlayWindow && !overlayWindow.isDestroyed()) {
-      overlayWindow.webContents.send('download-progress', {
-        status: 'cancelled',
-      });
-    }
-    return true;
-  }
-  return false;
-});
-
-ipcMain.handle('apply-update', async () => {
-  if (!downloadedUpdatePath || !fs.existsSync(downloadedUpdatePath)) {
-    return { success: false, error: 'Файл обновления не найден' };
-  }
-
-  try {
-    const { spawn } = require('child_process');
-    if (process.platform === 'win32') {
-      const child = spawn(downloadedUpdatePath, [], {
-        detached: true,
-        stdio: 'ignore',
-      });
-      await new Promise((resolve, reject) => {
-        child.once('spawn', resolve);
-        child.once('error', reject);
-      });
-      child.unref();
-      overlayWindow?.removeAllListeners('close');
-      app.quit();
-    } else {
-      const error = await shell.openPath(downloadedUpdatePath);
-      if (error) throw new Error(error);
-    }
-    return { success: true };
-  } catch (err) {
-    return { success: false, error: err.message };
-  }
-});
-
-ipcMain.handle('show-downloaded-file', () => {
-  if (downloadedUpdatePath && fs.existsSync(downloadedUpdatePath)) {
-    shell.showItemInFolder(downloadedUpdatePath);
-    return true;
-  }
-  return false;
-});
+// Only the trusted application frame can control update installation.
+function trustedUpdateRequest(event) {
+  return !!event.senderFrame && event.sender === overlayWindow?.webContents && event.senderFrame === event.sender?.mainFrame;
+}
+function updateRequest(event, action) {
+  if (!trustedUpdateRequest(event)) return { success: false, error: 'Недопустимый запрос обновления' };
+  return action();
+}
+ipcMain.handle('get-update-state', event => updateRequest(event, () => updates.getState()));
+ipcMain.handle('download-update', event => updateRequest(event, () => updates.download()));
+ipcMain.handle('cancel-download', event => updateRequest(event, () => updates.cancel()));
+ipcMain.handle('apply-update', event => updateRequest(event, () => updates.install()));
 
 // App Lifecycle
 app.whenReady().then(() => {
@@ -745,18 +534,8 @@ app.whenReady().then(() => {
   createTray();
   setAutoLaunch(config.autoLaunch);
 
-  // Background check for updates after startup
-  setTimeout(async () => {
-    const info = await checkForUpdates();
-    if (info && info.hasUpdate) {
-      updateTrayMenu();
-      if (overlayWindow && !overlayWindow.isDestroyed()) {
-        overlayWindow.webContents.send('update-available', info);
-      }
-    } else if (overlayWindow && !overlayWindow.isDestroyed()) {
-      overlayWindow.webContents.send('update-check-result', info);
-    }
-  }, 3500);
+  // Check after startup and download in the background. Installation is explicit.
+  setTimeout(() => { void checkForUpdates(); }, 3500);
 });
 
 app.on('will-quit', () => {

@@ -1,4 +1,4 @@
-const { t, setText, getSource } = window.overlayI18n;
+const { t, setText } = window.overlayI18n;
 window.overlayI18n.capture(document);
 
 // DOM Elements
@@ -57,7 +57,6 @@ const updateProgressSpeed = document.getElementById('update-progress-speed');
 const btnStartDownload = document.getElementById('btn-start-download');
 const btnCancelDownload = document.getElementById('btn-cancel-download');
 const btnInstallRestart = document.getElementById('btn-install-restart');
-const btnShowInFolder = document.getElementById('btn-show-in-folder');
 const btnOpenRelease = document.getElementById('btn-open-release');
 
 // State
@@ -452,192 +451,91 @@ chkNotifications.addEventListener('change', async (e) => {
 });
 
 // ============ Updates Management ============
-let currentUpdateInfo = null;
+let currentUpdateStatus = null;
 
 function renderUpdateInfo(info) {
   if (!info) return;
-  currentUpdateInfo = info;
+  const previousStatus = currentUpdateStatus;
+  currentUpdateStatus = info.status;
+  const downloading = info.status === 'downloading';
+  const downloaded = info.status === 'downloaded';
+  const installing = info.status === 'installing';
+  const checking = info.status === 'checking';
+  const retry = info.hasUpdate && ['available', 'cancelled', 'error'].includes(info.status);
 
-  if (info.currentVersion && appVersionLabel) {
-    setText(appVersionLabel, `Текущая версия: v${info.currentVersion}`);
-  }
+  if (info.currentVersion) setText(appVersionLabel, `Текущая версия: v${info.currentVersion}`);
+  btnCheckUpdates.disabled = downloading || installing || checking || info.supported === false;
+  setText(btnCheckUpdates, checking ? 'Проверка...' : 'Проверить обновления');
+  btnStartDownload.classList.toggle('hidden', !retry);
+  btnCancelDownload.classList.toggle('hidden', !downloading);
+  btnInstallRestart.classList.toggle('hidden', !downloaded && !installing);
+  btnInstallRestart.disabled = installing;
+  setText(btnInstallRestart, installing ? 'Применяем обновление...' : 'Перезапустить и обновить');
+  btnOpenRelease.classList.toggle('hidden', !info.hasUpdate);
+  btnOpenRelease.onclick = () => window.overlayAPI.openExternal(info.releaseUrl);
+  btnUpdateBadge.classList.toggle('hidden', !info.hasUpdate);
+  if (info.hasUpdate) setText(btnUpdateBadge, downloaded ? 'Готово к перезапуску' : `Доступно ${info.latestVersion}`);
 
-  if (!info.success && info.error) {
-    if (updateStatusText) {
-      setText(updateStatusText, `${info.error}`);
-      updateStatusText.className = 'update-status-text error';
-    }
-    if (btnStartDownload) btnStartDownload.classList.add('hidden');
-    if (btnCancelDownload) btnCancelDownload.classList.add('hidden');
-    if (btnInstallRestart) btnInstallRestart.classList.add('hidden');
-    if (btnShowInFolder) btnShowInFolder.classList.add('hidden');
-    if (btnOpenRelease) btnOpenRelease.classList.add('hidden');
-    if (updateProgressContainer) updateProgressContainer.classList.add('hidden');
-    return;
-  }
+  updateProgressContainer.classList.toggle('hidden', !downloading && !downloaded);
+  setText(updateProgressLabel, downloaded ? 'Готово к перезапуску' : 'Загрузка обновления...');
+  const percent = downloaded ? 100 : Math.max(0, Math.min(100, Number(info.percent) || 0));
+  setText(updateProgressPercent, `${percent}%`);
+  updateProgressFill.style.width = `${percent}%`;
+  setText(updateProgressDetails, downloading ? `${info.transferredMB || '0.0'} МБ / ${info.totalMB || '0.0'} МБ` : '');
+  setText(updateProgressSpeed, downloading ? `${info.speedMBps || '0.0'} МБ/с` : '');
 
-  if (info.hasUpdate) {
-    if (updateStatusText) {
-      setText(updateStatusText, `Доступна новая версия: ${info.latestVersion}`);
-      updateStatusText.className = 'update-status-text has-update';
-    }
-
-    if (btnUpdateBadge) {
-      btnUpdateBadge.classList.remove('hidden');
-      setText(btnUpdateBadge, `Доступно ${info.latestVersion}`);
-    }
-
-    if (btnStartDownload) {
-      btnStartDownload.classList.remove('hidden');
-      btnStartDownload.disabled = false;
-      setText(btnStartDownload, `Скачать установщик ${info.latestVersion}`);
-    }
-
-    if (btnOpenRelease) {
-      if (info.releaseUrl) {
-        btnOpenRelease.classList.remove('hidden');
-        btnOpenRelease.onclick = () => window.overlayAPI.openExternal(info.releaseUrl);
-      }
-    }
-
-    if (btnCancelDownload) btnCancelDownload.classList.add('hidden');
-    if (btnInstallRestart) btnInstallRestart.classList.add('hidden');
-    if (btnShowInFolder) btnShowInFolder.classList.add('hidden');
-    if (updateProgressContainer) updateProgressContainer.classList.add('hidden');
-
-    showNotification(`Доступно обновление ${info.latestVersion}! Откройте настройки для скачивания`, 4000);
-  } else {
-    if (updateStatusText) {
-      setText(updateStatusText, `У вас установлена актуальная версия (v${info.currentVersion || ''})`);
-      updateStatusText.className = 'update-status-text';
-    }
-    if (btnStartDownload) btnStartDownload.classList.add('hidden');
-    if (btnCancelDownload) btnCancelDownload.classList.add('hidden');
-    if (btnInstallRestart) btnInstallRestart.classList.add('hidden');
-    if (btnShowInFolder) btnShowInFolder.classList.add('hidden');
-    if (btnOpenRelease) btnOpenRelease.classList.add('hidden');
-    if (btnUpdateBadge) btnUpdateBadge.classList.add('hidden');
-    if (updateProgressContainer) updateProgressContainer.classList.add('hidden');
-  }
+  let message;
+  if (info.status === 'unavailable') message = 'Автообновления доступны в установленной версии Nimbo для Windows.';
+  else if (!info.success) message = `Ошибка: ${info.error}`;
+  else if (checking) message = 'Проверяем релизы на GitHub...';
+  else if (downloading) message = 'Скачиваем обновление в фоне...';
+  else if (downloaded) message = 'Обновление готово. Перезапустите Nimbo, когда будет удобно.';
+  else if (installing) message = 'Применяем обновление...';
+  else if (info.status === 'cancelled') message = 'Загрузка отменена.';
+  else if (info.hasUpdate) message = `Доступна новая версия: ${info.latestVersion}`;
+  else message = `У вас установлена актуальная версия (v${info.currentVersion || ''})`;
+  setText(updateStatusText, message);
+  updateStatusText.className = `update-status-text${!info.success ? ' error' : downloaded ? ' has-update' : ''}`;
+  if (downloaded && previousStatus !== 'downloaded') showNotification('Обновление готово. Перезапустите Nimbo, когда будет удобно.', 5000);
 }
 
-if (btnCheckUpdates) {
-  btnCheckUpdates.addEventListener('click', async () => {
-    btnCheckUpdates.disabled = true;
-    const oldText = getSource(btnCheckUpdates);
-    setText(btnCheckUpdates, 'Проверка...');
-    if (updateStatusText) {
-      setText(updateStatusText, 'Проверяем релизы на GitHub...');
-      updateStatusText.className = 'update-status-text';
-    }
-
-    try {
-      const info = await window.overlayAPI.checkForUpdates();
-      renderUpdateInfo(info);
-      if (!info.hasUpdate && info.success) {
-        showNotification('У вас установлена актуальная версия');
-      }
-    } catch (err) {
-      if (updateStatusText) {
-        setText(updateStatusText, `Ошибка: ${err.message}`);
-        updateStatusText.className = 'update-status-text error';
-      }
-    } finally {
-      btnCheckUpdates.disabled = false;
-      setText(btnCheckUpdates, oldText);
-    }
-  });
-}
-
-// In-App Direct Download Actions
-if (btnStartDownload) {
-  btnStartDownload.addEventListener('click', async () => {
-    if (!currentUpdateInfo || !currentUpdateInfo.downloadUrl) {
-      showNotification('Ссылка для загрузки не найдена');
-      return;
-    }
-
-    btnStartDownload.classList.add('hidden');
-    btnCheckUpdates.disabled = true;
-    if (btnCancelDownload) btnCancelDownload.classList.remove('hidden');
-    if (updateProgressContainer) updateProgressContainer.classList.remove('hidden');
-
-    setText(updateProgressPercent, '0%');
-    updateProgressFill.style.width = '0%';
-    setText(updateProgressDetails, 'Подключение к GitHub...');
-    setText(updateProgressSpeed, '');
-    setText(updateStatusText, 'Загрузка обновления...');
-    updateStatusText.className = 'update-status-text';
-
-    try {
-      const res = await window.overlayAPI.downloadUpdate(currentUpdateInfo.downloadUrl);
-      if (!res.success && !res.cancelled) {
-        throw new Error(res.error || 'Ошибка скачивания файла');
-      }
-    } catch (err) {
-      setText(updateStatusText, `${err.message}`);
-      updateStatusText.className = 'update-status-text error';
-      btnStartDownload.classList.remove('hidden');
-      if (btnCancelDownload) btnCancelDownload.classList.add('hidden');
-      if (updateProgressContainer) updateProgressContainer.classList.add('hidden');
-    } finally {
-      btnCheckUpdates.disabled = false;
-    }
-  });
-}
-
-if (btnCancelDownload) {
-  btnCancelDownload.addEventListener('click', async () => {
-    await window.overlayAPI.cancelDownload();
-    if (updateProgressContainer) updateProgressContainer.classList.add('hidden');
-    if (btnCancelDownload) btnCancelDownload.classList.add('hidden');
-    if (btnStartDownload) btnStartDownload.classList.remove('hidden');
-    setText(updateStatusText, 'Загрузка отменена.');
-    showNotification('Загрузка обновления отменена');
-  });
-}
-
-if (btnInstallRestart) {
-  btnInstallRestart.addEventListener('click', async () => {
-    const res = await window.overlayAPI.applyUpdate();
-    if (!res.success) {
-      showNotification(`${res.error || 'Не удалось применить обновление'}`);
-    }
-  });
-}
-
-if (btnShowInFolder) {
-  btnShowInFolder.addEventListener('click', async () => {
-    await window.overlayAPI.showDownloadedFile();
-  });
-}
-
-// Download progress listener from main process
-window.overlayAPI.onDownloadProgress((data) => {
-  if (data.status === 'downloading') {
-    if (updateProgressContainer) updateProgressContainer.classList.remove('hidden');
-    setText(updateProgressPercent, `${data.percent}%`);
-    updateProgressFill.style.width = `${data.percent}%`;
-    setText(updateProgressDetails, `${data.transferredMB} МБ / ${data.totalMB} МБ`);
-    setText(updateProgressSpeed, data.speed);
-  } else if (data.status === 'completed') {
-    setText(updateProgressPercent, '100%');
-    updateProgressFill.style.width = '100%';
-    setText(updateStatusText, 'Обновление скачано и готово к установке');
-    updateStatusText.className = 'update-status-text has-update';
-
-    if (btnCancelDownload) btnCancelDownload.classList.add('hidden');
-    if (btnStartDownload) btnStartDownload.classList.add('hidden');
-    if (btnInstallRestart) btnInstallRestart.classList.remove('hidden');
-    if (btnShowInFolder) btnShowInFolder.classList.remove('hidden');
-
-    showNotification('Установщик готов! Нажмите «Запустить установщик»', 5000);
-  } else if (data.status === 'cancelled') {
-    if (updateProgressContainer) updateProgressContainer.classList.add('hidden');
-    if (btnCancelDownload) btnCancelDownload.classList.add('hidden');
-    if (btnStartDownload) btnStartDownload.classList.remove('hidden');
+btnCheckUpdates.addEventListener('click', async () => {
+  btnCheckUpdates.disabled = true;
+  try {
+    renderUpdateInfo(await window.overlayAPI.checkForUpdates());
+  } catch (error) {
+    renderUpdateInfo({ success: false, status: 'error', error: error.message });
   }
 });
+btnStartDownload.addEventListener('click', async () => {
+  btnStartDownload.disabled = true;
+  try {
+    renderUpdateInfo(await window.overlayAPI.downloadUpdate());
+  } catch (error) {
+    showNotification(`Ошибка: ${error.message}`);
+  } finally {
+    btnStartDownload.disabled = false;
+  }
+});
+btnCancelDownload.addEventListener('click', async () => {
+  btnCancelDownload.disabled = true;
+  try {
+    await window.overlayAPI.cancelDownload();
+  } finally {
+    btnCancelDownload.disabled = false;
+  }
+});
+btnInstallRestart.addEventListener('click', async () => {
+  btnInstallRestart.disabled = true;
+  try {
+    const result = await window.overlayAPI.applyUpdate();
+    if (!result.success) throw new Error(result.error || 'Не удалось применить обновление');
+  } catch (error) {
+    btnInstallRestart.disabled = false;
+    showNotification(`Ошибка: ${error.message}`);
+  }
+});
+window.overlayAPI.onUpdateState(renderUpdateInfo);
 
 if (btnUpdateBadge) {
   btnUpdateBadge.addEventListener('click', () => {
@@ -673,21 +571,13 @@ window.overlayAPI.onSettingsUpdated((settings) => {
   populateSettingsUI(settings);
 });
 
-window.overlayAPI.onOpenSettings(() => {
-  openSettingsModal();
+window.overlayAPI.onOpenSettings((page) => {
+  openSettingsModal(page);
 });
 
 window.overlayAPI.onReloadWebview(() => {
   siteFrame.src = currentSettings.url || 'about:blank';
   showNotification('Перезагрузка страницы...');
-});
-
-window.overlayAPI.onUpdateAvailable((info) => {
-  renderUpdateInfo(info);
-});
-
-window.overlayAPI.onUpdateCheckResult((info) => {
-  renderUpdateInfo(info);
 });
 
 // ============ Quick controls and settings navigation ============
@@ -937,11 +827,13 @@ document.querySelectorAll('[data-community-link]').forEach(link => {
 
 // ============ Initialization ============
 async function init() {
-  const [settings, appVersion] = await Promise.all([
+  const [settings, appVersion, updateState] = await Promise.all([
     window.overlayAPI.getSettings(),
     window.overlayAPI.getVersion(),
+    window.overlayAPI.getUpdateState(),
   ]);
   populateSettingsUI(settings);
+  renderUpdateInfo(updateState);
 
   if (appVersionLabel && appVersion) {
     setText(appVersionLabel, `Текущая версия: v${appVersion}`);

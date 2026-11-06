@@ -1,15 +1,16 @@
 {
   "name": "nimbo",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Nimbo — your favorite sites, one key above the game",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "test": "node --test",
     "build": "electron-builder --win nsis --x64",
-    "build:unpacked": "electron-builder --win --x64 --dir"
+    "build:unpacked": "electron-builder --win --x64 --dir",
+    "build:signed": "electron-builder --win nsis --x64 --config.forceCodeSigning=true"
   },
-  "author": "DBDFogOverlay",
+  "author": "Dreamer",
   "license": "MIT",
   "homepage": "https://github.com/dreamersadobe/multioverlay",
   "repository": {
@@ -20,16 +21,29 @@
     "electron": "^28.0.0",
     "electron-builder": "^24.9.1"
   },
-  "dependencies": {},
+  "dependencies": {
+    "electron-updater": "6.8.11"
+  },
   "build": {
     "appId": "com.gameoverlay.app",
     "productName": "Nimbo",
-    "publish": null,
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "dreamersadobe",
+        "repo": "multioverlay",
+        "releaseType": "release"
+      }
+    ],
     "win": {
       "target": [
         "nsis"
       ],
-      "icon": "assets/icon.ico"
+      "icon": "assets/icon.ico",
+      "signingHashAlgorithms": [
+        "sha256"
+      ],
+      "verifyUpdateCodeSignature": true
     },
     "nsis": {
       "oneClick": false,
@@ -38,7 +52,10 @@
       "runAfterFinish": true,
       "deleteAppDataOnUninstall": false,
       "displayLanguageSelector": true,
-      "installerLanguages": ["en_US", "ru_RU"],
+      "installerLanguages": [
+        "en_US",
+        "ru_RU"
+      ],
       "installerIcon": "assets/icon.ico",
       "uninstallerIcon": "assets/icon.ico",
       "installerSidebar": "build/installer-sidebar.bmp",
@@ -49,7 +66,7 @@
       "shortcutName": "Nimbo",
       "uninstallDisplayName": "Nimbo",
       "artifactName": "${productName}-Setup-${version}.${ext}",
-      "differentialPackage": false
+      "differentialPackage": true
     },
     "files": [
       "main.js",
@@ -59,6 +76,7 @@
       "overlay.js",
       "overlay-utils.js",
       "app-profile.js",
+      "app-updater.js",
       "i18n.js",
       "nimbo.css",
       "error.html",

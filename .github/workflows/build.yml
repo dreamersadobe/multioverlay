@@ -27,7 +27,31 @@ jobs:
         run: npm test
 
       - name: Build Nimbo installer (Windows x64)
-        run: npm run build -- --publish never
+        shell: pwsh
+        env:
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          if ($env:WIN_CSC_LINK) {
+            npm run build:signed -- --publish never
+          } else {
+            Write-Host 'No code-signing certificate configured. This build will be unsigned.'
+            npm run build -- --publish never
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($env:WIN_CSC_LINK) {
+            $targets = @('dist/win-unpacked/Nimbo.exe') + @(Get-ChildItem dist/*-Setup-*.exe | Select-Object -ExpandProperty FullName)
+            foreach ($target in $targets) {
+              $signature = Get-AuthenticodeSignature $target
+              if ($signature.Status -ne 'Valid') {
+                throw "Invalid Authenticode signature: $target ($($signature.Status))"
+              }
+            }
+          }
+
+      - name: Verify silent installation and in-place update
+        shell: pwsh
+        run: ./build/smoke-update.ps1
 
       - name: Checksum installer
         shell: pwsh
@@ -44,16 +68,21 @@ jobs:
           path: |
             dist/*-Setup-*.exe
             dist/*-Setup-*.exe.sha256
+            dist/*-Setup-*.exe.blockmap
+            dist/latest.yml
+          if-no-files-found: error
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          name: Nimbo ${{ github.ref_name }} · Liquid Glass
+          name: Nimbo ${{ github.ref_name }}
           body_path: CHANGELOG.md
           files: |
             dist/*-Setup-*.exe
             dist/*-Setup-*.exe.sha256
+            dist/*-Setup-*.exe.blockmap
+            dist/latest.yml
           fail_on_unmatched_files: true
           draft: false
           prerelease: false
