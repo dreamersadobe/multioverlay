@@ -33,7 +33,7 @@ test('window bounds recover onto a display, including negative monitor coordinat
   assert.deepEqual(presetBounds('compact', { x: 0, y: 0, width: 300, height: 280 }), { x: 0, y: 0, width: 300, height: 280 });
 });
 
-function mainHarness() {
+function mainHarness(options = {}) {
   const handlers = new Map();
   const area = { x: -1280, y: 40, width: 1280, height: 760 };
   const events = [];
@@ -48,10 +48,11 @@ function mainHarness() {
     getBounds() { return bounds; }
     setOpacity(value) { opacity = value; }
     setAlwaysOnTop() {} setIgnoreMouseEvents() {} loadFile() {} on() {} hide() {} show() {}
+    removeAllListeners(name) { events.push(['remove-listeners', name]); }
     isDestroyed() { return false; }
   }
   const electron = {
-    app: { getPath: () => '/mock', getVersion: () => '2.5.0', whenReady: () => ({ then() {} }), on() {}, requestSingleInstanceLock: () => true, setLoginItemSettings() {} },
+    app: { getPath: () => '/mock', setPath() {}, setAppUserModelId() {}, getVersion: () => '3.0.0', whenReady: () => ({ then() {} }), on() {}, requestSingleInstanceLock: () => true, setLoginItemSettings() {}, quit: () => events.push(['quit']) },
     BrowserWindow: Window,
     screen: { getPrimaryDisplay: () => ({ workArea: area }), getDisplayMatching: () => ({ workArea: area }) },
     ipcMain: { handle: (name, fn) => handlers.set(name, fn), on() {} },
@@ -59,11 +60,11 @@ function mainHarness() {
     globalShortcut: {}, Menu: { buildFromTemplate: items => items },
   };
   const context = {
-    require: name => name === 'electron' ? electron : name === 'fs' ? { existsSync: () => false, mkdirSync() {}, writeFileSync() {} } : name.startsWith('./') ? require(path.join(__dirname, '..', name)) : require(name),
+    require: name => name === 'electron' ? electron : name === 'fs' ? { existsSync: file => file === '/mock/update.exe', mkdirSync() {}, writeFileSync() {} } : name === 'child_process' && options.spawn ? { spawn: options.spawn } : name.startsWith('./') ? require(path.join(__dirname, '..', name)) : require(name),
     __dirname: path.resolve(__dirname, '..'), console, Buffer,
-    setTimeout: () => 0, clearTimeout() {}, process,
+    setTimeout: () => 0, clearTimeout() {}, process: options.platform ? { ...process, platform: options.platform } : process,
   };
-  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../main.js'), 'utf8') + '\ncreateOverlayWindow(); globalThis.window = overlayWindow; globalThis.recover = recoverWindowBounds; globalThis.deactivate = deactivateOverlay; tray = { setContextMenu: value => { globalThis.menu = value; } };', context);
+  vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../main.js'), 'utf8') + '\ncreateOverlayWindow(); globalThis.window = overlayWindow; globalThis.recover = recoverWindowBounds; globalThis.deactivate = deactivateOverlay; globalThis.setUpdatePath = value => { downloadedUpdatePath = value; }; tray = { setContextMenu: value => { globalThis.menu = value; } };', context);
   return { handlers, events, externalUrls, context, area, get opacity() { return opacity; }, get bounds() { return bounds; } };
 }
 
@@ -137,4 +138,28 @@ test('community links open through the system browser and reject non-web schemes
   assert.equal(await open({}, 'javascript:alert(1)'), false);
   assert.equal(await open({}, 'file:///tmp/test'), false);
   assert.equal(h.externalUrls.length, 1);
+});
+
+test('Windows updates quit only after the installer starts, and report launch failures', async () => {
+  const { EventEmitter } = require('node:events');
+  for (const succeeds of [true, false]) {
+    const child = new EventEmitter();
+    let unreferenced = false;
+    child.unref = () => { unreferenced = true; };
+    const h = mainHarness({ platform: 'win32', spawn: file => {
+      assert.equal(file, '/mock/update.exe');
+      return child;
+    } });
+    h.context.setUpdatePath('/mock/update.exe');
+    const applying = h.handlers.get('apply-update')();
+    assert(!h.events.some(([name]) => name === 'quit'));
+    if (succeeds) child.emit('spawn');
+    else child.emit('error', new Error('Access denied'));
+    const result = await applying;
+    assert.equal(result.success, succeeds);
+    assert.equal(unreferenced, succeeds);
+    assert.equal(h.events.some(([name]) => name === 'quit'), succeeds);
+    assert.equal(h.events.some(([name, event]) => name === 'remove-listeners' && event === 'close'), succeeds);
+    if (!succeeds) assert.equal(result.error, 'Access denied');
+  }
 });

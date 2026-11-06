@@ -3,6 +3,10 @@ const path = require('path');
 const fs = require('fs');
 const { t } = require('./i18n');
 const { normalizeBookmarks, fitBounds, presetBounds } = require('./overlay-utils');
+const { configureProfile } = require('./app-profile');
+
+configureProfile(app);
+if (process.platform === 'win32') app.setAppUserModelId('com.gameoverlay.app');
 let settingsOpen = false;
 
 const GITHUB_REPO = 'dreamersadobe/multioverlay';
@@ -24,6 +28,7 @@ const DEFAULT_CONFIG = {
   showNotifications: true,
   autoLaunch: false,
   language: 'ru',
+  onboardingComplete: false,
 };
 
 function getUserConfigPath() {
@@ -63,17 +68,13 @@ function saveConfig(updates = {}) {
   } catch (e) {
     console.warn('Failed to write user config:', e.message);
   }
-
-  try {
-    const localPath = path.join(__dirname, 'config.json');
-    fs.writeFileSync(localPath, JSON.stringify(config, null, 2), 'utf-8');
-  } catch (_) {
-    // Ignore if running from packaged read-only path
-  }
 }
 
 function setAutoLaunch(enable) {
   try {
+    if (process.platform === 'win32' && app.isPackaged) {
+      app.setLoginItemSettings({ name: 'Game Overlay', openAtLogin: false });
+    }
     app.setLoginItemSettings({
       openAtLogin: !!enable,
       path: process.execPath,
@@ -103,6 +104,8 @@ function createOverlayWindow() {
     maximizable: false,
     focusable: true,
     hasShadow: false,
+    title: 'Nimbo',
+    icon: path.join(__dirname, 'assets', 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -205,7 +208,7 @@ async function checkForUpdates() {
   try {
     const response = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/releases/latest`, {
       headers: {
-        'User-Agent': 'GameOverlay-App',
+        'User-Agent': 'Nimbo-App',
         'Accept': 'application/vnd.github.v3+json',
       },
     });
@@ -362,7 +365,7 @@ function createTray() {
   }
 
   tray = new Tray(trayIcon);
-  tray.setToolTip('Game Overlay');
+  tray.setToolTip('Nimbo');
   updateTrayMenu();
 
   tray.on('click', () => {
@@ -401,7 +404,7 @@ function updateTrayMenu() {
 
   const menuTemplate = [
     {
-      label: `🎮 Game Overlay v${app.getVersion()}`,
+      label: `Nimbo v${app.getVersion()}`,
       enabled: false,
     },
     { type: 'separator' },
@@ -602,7 +605,7 @@ ipcMain.handle('download-update', async (event, customUrl) => {
     const { signal } = currentDownloadAbortController;
 
     const res = await fetch(url, {
-      headers: { 'User-Agent': 'GameOverlay-App' },
+      headers: { 'User-Agent': 'Nimbo-App' },
       signal,
     });
 
@@ -615,7 +618,7 @@ ipcMain.handle('download-update', async (event, customUrl) => {
     const rawFileName = path.basename(parsedUrl.pathname);
     const fileName = (rawFileName && rawFileName.endsWith('.exe'))
       ? rawFileName
-      : `Game-Overlay-Setup-${cachedUpdateInfo ? cachedUpdateInfo.latestVersion : 'Update'}.exe`;
+      : `Nimbo-Setup-${cachedUpdateInfo ? cachedUpdateInfo.latestVersion : 'Update'}.exe`;
     const tempDir = app.getPath('temp');
     downloadedUpdatePath = path.join(tempDir, fileName);
 
@@ -696,7 +699,7 @@ ipcMain.handle('cancel-download', () => {
   return false;
 });
 
-ipcMain.handle('apply-update', () => {
+ipcMain.handle('apply-update', async () => {
   if (!downloadedUpdatePath || !fs.existsSync(downloadedUpdatePath)) {
     return { success: false, error: 'Файл обновления не найден' };
   }
@@ -708,10 +711,16 @@ ipcMain.handle('apply-update', () => {
         detached: true,
         stdio: 'ignore',
       });
+      await new Promise((resolve, reject) => {
+        child.once('spawn', resolve);
+        child.once('error', reject);
+      });
       child.unref();
+      overlayWindow?.removeAllListeners('close');
       app.quit();
     } else {
-      shell.openPath(downloadedUpdatePath);
+      const error = await shell.openPath(downloadedUpdatePath);
+      if (error) throw new Error(error);
     }
     return { success: true };
   } catch (err) {

@@ -7,6 +7,7 @@ const opacityBadge = document.getElementById('opacity-badge');
 const notification = document.getElementById('notification');
 const notificationText = document.getElementById('notification-text');
 const siteFrame = document.getElementById('site-frame');
+const welcomeDialog = document.getElementById('welcome-dialog');
 
 // Title Bar Buttons
 const btnSettings = document.getElementById('btn-settings');
@@ -118,6 +119,8 @@ function populateSettingsUI(settings) {
   currentSettings = { ...currentSettings, ...settings };
   window.overlayI18n.setLanguage(currentSettings.language);
   document.getElementById('language-select').value = currentSettings.language;
+  document.getElementById('welcome-language').value = currentSettings.language;
+  document.getElementById('welcome-hotkey').textContent = currentSettings.hotkey;
 
   // Hotkey
   setText(hotkeyBtnText, currentSettings.hotkey);
@@ -282,6 +285,7 @@ window.addEventListener('keydown', (e) => {
 
   // If not recording, Esc deactivates the overlay or closes settings modal
   if (e.key === 'Escape') {
+    if (welcomeDialog.open) return; // Let the dialog's cancel handler finish the guide.
     if (!document.getElementById('opacity-popover').classList.contains('hidden')) {
       e.preventDefault();
       e.stopPropagation();
@@ -300,6 +304,7 @@ window.addEventListener('keydown', (e) => {
 // ============ Settings Modal Open/Close ============
 let settingsReturnFocus = null;
 function openSettingsModal(page) {
+  if (welcomeDialog.open) welcomeDialog.close();
   if (settingsModal.classList.contains('hidden')) settingsReturnFocus = document.activeElement;
   settingsModal.classList.remove('hidden');
   document.getElementById('main-content').inert = true;
@@ -655,6 +660,7 @@ window.overlayAPI.onOverlayStateChanged(({ isActive, hideMode, hotkey }) => {
   if (isActive) {
     showNotification(`Оверлей активен (${currentSettings.hotkey} — скрыть)`);
   } else {
+    if (welcomeDialog.open) welcomeDialog.close();
     closeOpacityPopover();
     closeSettingsModal();
     if (currentSettings.hideMode === 'clickthrough') {
@@ -861,7 +867,7 @@ document.getElementById('btn-manage-bookmarks').addEventListener('click', () => 
   document.getElementById('btn-bookmark-current').click();
 });
 
-document.getElementById('language-select').addEventListener('change', async event => {
+async function changeLanguage(event) {
   const language = event.target.value;
   try {
     await window.overlayAPI.saveSettings({ language });
@@ -871,6 +877,50 @@ document.getElementById('language-select').addEventListener('change', async even
     event.target.value = currentSettings.language;
     showNotification(error.message);
   }
+}
+document.getElementById('language-select').addEventListener('change', changeLanguage);
+document.getElementById('welcome-language').addEventListener('change', changeLanguage);
+
+function showWelcome() {
+  document.getElementById('welcome-autolaunch').checked = !!currentSettings.autoLaunch;
+  document.getElementById('welcome-hotkey').textContent = currentSettings.hotkey;
+  setText(document.getElementById('welcome-error'), '');
+  window.overlayAPI.setSettingsOpen(true);
+  if (!welcomeDialog.open) welcomeDialog.showModal();
+  document.getElementById('btn-welcome-start').focus({ preventScroll: true });
+  welcomeDialog.scrollTop = 0;
+}
+
+async function finishWelcome(configure) {
+  const buttons = welcomeDialog.querySelectorAll('button');
+  buttons.forEach(button => { button.disabled = true; });
+  try {
+    const saved = await window.overlayAPI.saveSettings({
+      onboardingComplete: true,
+      autoLaunch: document.getElementById('welcome-autolaunch').checked,
+    });
+    populateSettingsUI(saved);
+    welcomeDialog.close();
+    if (configure) openSettingsModal('general');
+    else {
+      window.overlayAPI.setSettingsOpen(false);
+      btnSettings.focus();
+    }
+  } catch {
+    setText(document.getElementById('welcome-error'), 'Не удалось сохранить настройки. Попробуйте ещё раз.');
+  } finally {
+    buttons.forEach(button => { button.disabled = false; });
+  }
+}
+document.getElementById('btn-welcome-start').addEventListener('click', () => finishWelcome(false));
+document.getElementById('btn-welcome-settings').addEventListener('click', () => finishWelcome(true));
+welcomeDialog.addEventListener('cancel', event => {
+  event.preventDefault();
+  if (!document.getElementById('btn-welcome-start').disabled) finishWelcome(false);
+});
+document.getElementById('btn-show-welcome').addEventListener('click', () => {
+  closeSettingsModal();
+  showWelcome();
 });
 
 // Community links always leave the embedded site and open in the user's browser.
@@ -897,7 +947,8 @@ async function init() {
     setText(appVersionLabel, `Текущая версия: v${appVersion}`);
   }
 
-  setTimeout(() => {
+  if (!settings.onboardingComplete) showWelcome();
+  else setTimeout(() => {
     showNotification(`Оверлей готов! Нажмите [${settings.hotkey || 'F2'}] для вызова в игре`, 3500);
   }, 1000);
 }
@@ -926,7 +977,7 @@ dockGroups.forEach((group) => {
       const distance = Math.hypot(x - button.offsetLeft - button.offsetWidth / 2,
         y - button.offsetTop - button.offsetHeight / 2);
       const influence = Math.max(0, 1 - distance / 90);
-      button.style.setProperty('--dock-scale', button.disabled ? 1 : 1 + 0.18 * influence * influence);
+      button.style.setProperty('--dock-scale', button.disabled ? 1 : 1 + 0.06 * influence * influence);
     });
   });
   group.addEventListener('pointerleave', resetDock);

@@ -3,13 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Game Overlay</title>
-  <!-- Google Fonts: Inter & JetBrains Mono -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <title>Nimbo</title>
+  <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="overlay.css">
-  <link rel="stylesheet" href="command-deck.css">
+  <link rel="stylesheet" href="nimbo.css">
 </head>
 <body>
   <!-- Title bar for dragging and controls -->
@@ -17,12 +14,9 @@
     <div id="title-bar-drag">
       <div class="brand">
         <span class="brand-icon">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="6" width="20" height="12" rx="3"/>
-            <path d="M6 12h4m-2-2v4m9-2h.01m3 0h.01"/>
-          </svg>
+          <img src="assets/mark.svg" width="28" height="28" alt="">
         </span>
-        <span id="title-text">GAME<span class="brand-divider">/</span>OVERLAY</span>
+        <span id="title-text">nimbo</span>
       </div>
       <span id="status-badge" class="badge active" title="Текущий статус оверлея">Мышь активна [F2]</span>
 
@@ -63,7 +57,6 @@
   </header>
 
   <nav id="bookmarks-bar" aria-label="Любимые сайты">
-    <span class="rail-label" aria-hidden="true">БЫСТРЫЙ<br>ДОСТУП</span>
     <div id="bookmark-shortcuts" class="presets-buttons"></div>
     <a id="btn-support" class="support-button" href="https://t.me/fullofowndreams" data-community-link title="Поддержать проект в Telegram" aria-label="Поддержать проект в Telegram"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg><span>Поддержать</span></a>
     <button id="btn-manage-bookmarks" class="toolbar-button" title="Добавить или изменить закладки" aria-label="Управление закладками">＋</button>
@@ -94,9 +87,8 @@
           <span class="modal-title-icon">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           </span>
-          <span class="settings-identity"><span class="eyebrow">GAME OVERLAY / НАСТРОЙКИ</span><strong>Ваше пространство.</strong><span class="identity-caption">Всё нужное. Поверх игры.</span></span>
+          <span class="settings-identity"><strong>Настройки</strong><span class="identity-caption">Ваше пространство поверх игры.</span></span>
         </div>
-        <div class="orbit-mark" aria-hidden="true"><i></i><b>GO</b></div>
         <button id="btn-modal-close" class="modal-close-btn" title="Закрыть">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"/>
@@ -105,20 +97,14 @@
         </button>
       </div>
 
-      <aside class="settings-sidebar">
+      <div class="settings-navigation">
       <div class="settings-tabs" role="tablist" aria-label="Разделы настроек">
         <button id="tab-general" role="tab" aria-selected="true" aria-controls="panel-general" data-tab="general" data-number="01">Основное</button>
         <button id="tab-appearance" role="tab" aria-selected="false" aria-controls="panel-appearance" data-tab="appearance" data-number="02" tabindex="-1">Внешний вид</button>
         <button id="tab-hotkeys" role="tab" aria-selected="false" aria-controls="panel-hotkeys" data-tab="hotkeys" data-number="03" tabindex="-1">Клавиши</button>
         <button id="tab-updates" role="tab" aria-selected="false" aria-controls="panel-updates" data-tab="updates" data-number="04" tabindex="-1">Обновления</button>
       </div>
-      <a class="community-card" href="https://t.me/fullofowndreams" data-community-link aria-label="Канал @fullofowndreams в Telegram">
-        <span class="community-top"><span class="telegram-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21 3-7 18-4-7-7-4 18-7Z"/><path d="m10 14 6-6"/></svg></span><span class="external-arrow" aria-hidden="true">↗</span></span>
-        <strong>Будем на связи</strong>
-        <span class="community-handle">@fullofowndreams</span>
-        <span class="community-caption">Наш канал в Telegram</span>
-      </a>
-      </aside>
+      </div>
       <div class="modal-body">
         <div id="panel-general" class="settings-panel" role="tabpanel" aria-labelledby="tab-general" tabindex="0">
           <div class="panel-intro"><span class="eyebrow">01 / БЫСТРЫЙ ДОСТУП</span><h2>Всё под рукой</h2><p>Соберите свою коллекцию сайтов и выберите поведение оверлея.</p></div>
@@ -296,7 +282,7 @@
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
               <span>Обновления программы</span>
             </span>
-            <span class="setting-desc" id="app-version-label">Текущая версия: v2.6.0</span>
+            <span class="setting-desc" id="app-version-label"></span>
           </div>
           <div class="update-box">
             <div id="update-status-text" class="update-status-text">Проверка наличия обновлений...</div>
@@ -323,6 +309,7 @@
               <button id="btn-install-restart" class="btn success hidden">Запустить установщик</button>
               <button id="btn-show-in-folder" class="btn secondary hidden">Показать в папке</button>
               <button id="btn-open-release" class="btn secondary hidden">GitHub Releases</button>
+              <button id="btn-show-welcome" class="btn secondary">Как пользоваться</button>
             </div>
           </div>
         </section>
@@ -335,6 +322,22 @@
       </div>
     </div>
   </div>
+
+  <dialog id="welcome-dialog" aria-labelledby="welcome-title">
+    <div class="welcome-top"><span class="welcome-wordmark"><img src="assets/mark.svg" width="32" height="32" alt="">nimbo</span>
+      <label class="language-control"><span class="sr-only">Язык интерфейса</span><select id="welcome-language" aria-label="Язык интерфейса"><option value="ru">Русский</option><option value="en">English</option></select></label>
+    </div>
+    <div class="welcome-hero"><span class="eyebrow">ВАШ СПУТНИК В ИГРЕ</span><h1 id="welcome-title">Играйте.<br><span>Остальное — рядом.</span></h1><p>Гайды, видео и любимые сайты поверх игры. Без переключения окон.</p></div>
+    <ol class="welcome-steps">
+      <li><span class="step-number">01</span><div><strong>Подготовьте игру</strong><p>Выберите безрамочный оконный режим в настройках игры.</p></div></li>
+      <li><span class="step-number">02</span><div><strong>Откройте нужный сайт</strong><p>Выберите закладку вверху или добавьте свой адрес через ＋.</p></div></li>
+      <li><span class="step-number">03</span><div><strong>Переключайтесь одной клавишей</strong><p>Вызовите оверлей или верните управление в игру.</p></div><kbd id="welcome-hotkey">F2</kbd></li>
+    </ol>
+    <label class="custom-checkbox welcome-autolaunch"><input type="checkbox" id="welcome-autolaunch"><span class="checkbox-box"></span><span class="checkbox-label">Запускать оверлей вместе с Windows</span></label>
+    <p id="welcome-error" class="inline-error" role="alert"></p>
+    <div class="welcome-actions"><button id="btn-welcome-settings" class="btn secondary">Настроить под себя</button><button id="btn-welcome-start" class="btn primary">Начать <span aria-hidden="true">↗</span></button></div>
+    <p class="welcome-footnote">Nimbo остаётся в трее. Полный выход — через меню иконки.</p>
+  </dialog>
 
   <script src="i18n.js"></script>
   <script src="overlay-utils.js"></script>

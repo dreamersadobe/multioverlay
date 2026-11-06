@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="280" viewBox="0 0 960 280" fill="none">
+  <rect width="960" height="280" rx="20" fill="#18261f"/>
+  <g stroke="#a0edcc" stroke-opacity=".12">
+    <ellipse cx="795" cy="145" rx="140" ry="54" transform="rotate(-24 795 145)"/>
+    <ellipse cx="795" cy="145" rx="188" ry="80" transform="rotate(-24 795 145)"/>
+    <ellipse cx="795" cy="145" rx="240" ry="105" transform="rotate(-24 795 145)"/>
+  </g>
+  <g transform="translate(720 60) scale(2.4)">
+    <ellipse cx="32" cy="16" rx="20" ry="7" transform="rotate(-14 32 16)" stroke="#a0edcc" stroke-width="4"/>
+    <path d="M18 52V37c0-16 28-16 28 0v15" stroke="#edf4f1" stroke-width="7" stroke-linecap="round"/>
+  </g>
+  <text x="44" y="57" fill="#a0edcc" font-family="Segoe UI, sans-serif" font-size="11" letter-spacing="3">YOUR IN-GAME COMPANION</text>
+  <text x="40" y="138" fill="#edf4f1" font-family="Segoe UI, sans-serif" font-weight="600" font-size="76" letter-spacing="-4">nimbo</text>
+  <text x="44" y="185" fill="#c4d5ca" font-family="Segoe UI, sans-serif" font-size="23">Всё нужное. Поверх игры.</text>
+  <rect x="44" y="217" width="37" height="26" rx="6" fill="#a0edcc"/>
+  <text x="52" y="235" fill="#18261f" font-family="Consolas, monospace" font-size="14">F2</text>
+  <text x="93" y="235" fill="#a2b8aa" font-family="Segoe UI, sans-serif" font-size="12">Гайды · Видео · Любимые сайты</text>
+</svg>

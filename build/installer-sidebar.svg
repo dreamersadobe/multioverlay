@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="164" height="314" viewBox="0 0 164 314">
+  <rect width="164" height="314" fill="#18261f"/>
+  <g fill="none" stroke="#a0edcc" stroke-opacity=".12">
+    <ellipse cx="82" cy="179" rx="99" ry="38" transform="rotate(-24 82 179)"/>
+    <ellipse cx="82" cy="179" rx="126" ry="57" transform="rotate(-24 82 179)"/>
+    <ellipse cx="82" cy="179" rx="150" ry="77" transform="rotate(-24 82 179)"/>
+  </g>
+  <g transform="translate(31 113) scale(1.6)" fill="none">
+    <ellipse cx="32" cy="16" rx="20" ry="7" transform="rotate(-14 32 16)" stroke="#a0edcc" stroke-width="4"/>
+    <path d="M18 52V37c0-16 28-16 28 0v15" stroke="#edf4f1" stroke-width="7" stroke-linecap="round"/>
+  </g>
+  <text x="20" y="39" fill="#edf4f1" font-family="Segoe UI, sans-serif" font-size="25" font-weight="600" letter-spacing="-1">nimbo</text>
+  <path d="M20 263H144" stroke="#3d5647"/>
+  <text x="20" y="282" fill="#a0edcc" font-family="Segoe UI, sans-serif" font-size="9" letter-spacing="1.5">ABOVE THE GAME.</text>
+</svg>
